@@ -1,0 +1,14 @@
+{
+  "domain": "ha_usms",
+  "name": "HA-USMS",
+  "codeowners": [
+    "@azsaurr"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/azsaurr/ha_usms",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/azsaurr/ha_usms/issues",
+  "requirements": ["usms==0.5.7"],
+  "version": "0.1.0"
+}
