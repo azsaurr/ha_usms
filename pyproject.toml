@@ -1,0 +1,45 @@
+[dependency-groups]  # https://docs.astral.sh/uv/concepts/projects/dependencies/#development-dependencies
+dev = [
+  "commitizen (>=4.3.0)",
+  "pre-commit (>=4.0.1)",
+  "ruff (>=0.9.2)",
+]
+
+[tool.commitizen]  # https://commitizen-tools.github.io/commitizen/config/
+bump_message = "bump: v$current_version → v$new_version"
+tag_format = "v$version"
+update_changelog_on_bump = true
+version_provider = "uv"
+
+[tool.ruff]  # https://docs.astral.sh/ruff/settings/
+fix = true
+target-version = "py313"
+
+    [tool.ruff.format]
+    docstring-code-format = true
+
+    [tool.ruff.lint]
+    select = ["ALL"]
+    ignore = [
+        "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+        "D203", # no-blank-line-before-class (incompatible with formatter)
+        "D212", # multi-line-summary-first-line (incompatible with formatter)
+        "COM812", # incompatible with formatter
+        "ISC001", # incompatible with formatter
+    ]
+    unfixable = ["ERA001", "F401", "F841", "T201", "T203"]
+
+        [tool.ruff.lint.pycodestyle]
+        max-doc-length = 100
+
+        [tool.ruff.lint.pydocstyle]
+        convention = "numpy"
+
+        [tool.ruff.lint.flake8-pytest-style]
+        fixture-parentheses = false
+
+        [tool.ruff.lint.pyupgrade]
+        keep-runtime-typing = true
+
+        [tool.ruff.lint.mccabe]
+        max-complexity = 25

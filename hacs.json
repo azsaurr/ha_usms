@@ -1,5 +1,8 @@
 {
-    "name": "HA-USMS",
-    "homeassistant": "2025.2.4",
-    "hacs": "2.0.1"
+  "name": "HA-USMS",
+  "homeassistant": "2025.2.4",
+  "hacs": "2.0.1",
+  "zip-release": true,
+  "filename": "release.zip",
+  "country": "BN"
 }

@@ -20,13 +20,15 @@ Each meter also has two associated buttons. The `Download and Import History` bu
 
 ## Install
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=azsaurr&repository=HA-USMS)
+
 ### If you have [HACS](https://hacs.xyz/) installed
 
 - Open HACS
 - Click on the 3-dot menu on the top right of the page
 - Select `Custom repositories`
 - Copy and paste this repository into the text field:
-    ```https://github.com/azsaurr/ha_usms```
+  `https://github.com/azsaurr/ha_usms`
 - Select `Integration` from the dropdown
 - Click `Add`
 
@@ -34,7 +36,7 @@ Each meter also has two associated buttons. The `Download and Import History` bu
 
 - Download the source code of this repository
 - Extract the downloaded `.zip` file
-- Copy and paste ```./config/custom_components/ha_usms``` from this repo to ```<home_assistant>/config/custom_components/ha_usms```
+- Copy and paste `./config/custom_components/ha_usms` from this repo to `<home_assistant>/config/custom_components/ha_usms`
 
 ## Configuration
 
@@ -50,8 +52,8 @@ After installation:
 ## To-Do
 
 - [ ] Improve README
-- [X] Re-structure source code files
-- [X] Support for configuration via GUI
+- [x] Re-structure source code files
+- [x] Support for configuration via GUI
 - [ ] Go through Home Assistant's [development checklist](https://developers.home-assistant.io/docs/development_checklist)
 - [ ] Publish package to HACS store
 - [ ] Support for water meter
