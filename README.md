@@ -1,46 +1,71 @@
-# Notice
+# USMS Smart Meter Custom Integration for Home Assistant
 
-The component and platforms in this repository are not meant to be used by a
-user, but as a "blueprint" that custom component developers can build
-upon, to make more awesome stuff.
+[USMS](https://www.usms.com.bn/smartmeter/about.html) is a digital platform for electric and water meters in Brunei. This integration allows Home Assistant to poll data from your USMS account.
 
-HAVE FUN! 😎
+Getting started is as easy as providing your login information (username and password), and Home Assistant will handle the rest. After configuration, every meter under the account will be made available in Home Assistant, alongside the following values as extra attributes:
 
-## Why?
+- `Credit` - remaining balance/credit
+- `Unit` - remaining unit, also the default state of the entity
+- `Last update` - timestamp of last update by USMS
+- `Last refresh` - timestamp of last refresh attempt by the integration
+- `Currency` - currency in BND (Brunei Dollars)
+- `Last month consumption` - the total consumption of this meter last month
+- `Last month cost` - the cost for the total consumption of this meter last month
+- `This month consumption` - the total consumption of this meter this month
+- `This month cost` - the cost for the total consumption of this meter this month
 
-This is simple, by having custom_components look (README + structure) the same
-it is easier for developers to help each other and for users to start using them.
+Each meter also has two associated buttons. The `Download and Import History` button will fetch all data and import them as long-term statistics, allowing the meter to be imported into Home Assistant's Energy dashboard. The `Recalculate Statistics` button is mostly for fixing broken statistics, if any.
 
-If you are a developer and you want to add things to this "blueprint" that you think more
-developers will have use for, please open a PR to add it :)
+> **Note:** For now only electric meters are supported since I do not have the smart water meter installed yet.
 
-## What?
+## Install
 
-This repository contains multiple files, here is a overview:
+### If you have [HACS](https://hacs.xyz/) installed
 
-File | Purpose | Documentation
--- | -- | --
-`.devcontainer.json` | Used for development/testing with Visual Studio Code. | [Documentation](https://code.visualstudio.com/docs/remote/containers)
-`.github/ISSUE_TEMPLATE/*.yml` | Templates for the issue tracker | [Documentation](https://help.github.com/en/github/building-a-strong-community/configuring-issue-templates-for-your-repository)
-`custom_components/ha_usms/*` | Integration files, this is where everything happens. | [Documentation](https://developers.home-assistant.io/docs/creating_component_index)
-`CONTRIBUTING.md` | Guidelines on how to contribute. | [Documentation](https://help.github.com/en/github/building-a-strong-community/setting-guidelines-for-repository-contributors)
-`LICENSE` | The license file for the project. | [Documentation](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/licensing-a-repository)
-`README.md` | The file you are reading now, should contain info about the integration, installation and configuration instructions. | [Documentation](https://help.github.com/en/github/writing-on-github/basic-writing-and-formatting-syntax)
-`requirements.txt` | Python packages used for development/lint/testing this integration. | [Documentation](https://pip.pypa.io/en/stable/user_guide/#requirements-files)
+- Open HACS
+- Click on the 3-dot menu on the top right of the page
+- Select `Custom repositories`
+- Copy and paste this repository into the text field:
+    ```https://github.com/azsaurr/ha_usms```
+- Select `Integration` from the dropdown
+- Click `Add`
 
-## How?
+### Manual installation
 
-1. Create a new repository in GitHub, using this repository as a template by clicking the "Use this template" button in the GitHub UI.
-1. Open your new repository in Visual Studio Code devcontainer (Preferably with the "`Dev Containers: Clone Repository in Named Container Volume...`" option).
-1. Rename all instances of the `ha_usms` to `custom_components/<your_integration_domain>` (e.g. `custom_components/awesome_integration`).
-1. Rename all instances of the `Integration Blueprint` to `<Your Integration Name>` (e.g. `Awesome Integration`).
-1. Run the `scripts/develop` to start HA and test out your new integration.
+- Download the source code of this repository
+- Extract the downloaded `.zip` file
+- Copy and paste ```./config/custom_components/ha_usms``` from this repo to ```<home_assistant>/config/custom_components/ha_usms```
 
-## Next steps
+## Configuration
 
-These are some next steps you may want to look into:
-- Add tests to your integration, [`pytest-homeassistant-custom-component`](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component) can help you get started.
-- Add brand images (logo/icon) to https://github.com/home-assistant/brands.
-- Create your first release.
-- Share your integration on the [Home Assistant Forum](https://community.home-assistant.io/).
-- Submit your integration to [HACS](https://hacs.xyz/docs/publish/start).
+After installation:
+
+- Open Settings
+- Select `Devices & services`
+- Click the floating blue `Add Integration` button
+- Search for and select `HA-USMS`
+- Enter your username and password
+- Submit
+
+## To-Do
+
+- [ ] Improve README
+- [X] Re-structure source code files
+- [X] Support for configuration via GUI
+- [ ] Go through Home Assistant's [development checklist](https://developers.home-assistant.io/docs/development_checklist)
+- [ ] Publish package to HACS store
+- [ ] Support for water meter
+
+## License
+
+Distributed under the MIT License. See `LICENSE` for more information.
+
+## Acknowledgments
+
+This project was made possible with help from…
+
+- [Home Assistant Developer Documentation](https://developers.home-assistant.io/docs/creating_component_index)
+- Scaffolded using [ludeeus/integration_blueprint](https://github.com/ludeeus/integration_blueprint)
+- [homeassistant-statistics](https://github.com/klausj1/homeassistant-statistics), which provided useful reference for importing statistics
+- [USMS Portal](https://www.usms.com.bn/smartmeter/about.html) for providing access to smart meter data
+- [usms](https://github.com/azsaurr/usms), wrapper for interacting with the USMS portal
