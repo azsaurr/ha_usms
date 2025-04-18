@@ -1,6 +1,6 @@
 [project]
 name = "HA-USMS"
-version = "0.1.0"
+version = "0.1.1"
 
 [dependency-groups]  # https://docs.astral.sh/uv/concepts/projects/dependencies/#development-dependencies
 dev = [
