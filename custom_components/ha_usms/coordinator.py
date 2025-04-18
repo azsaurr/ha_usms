@@ -35,11 +35,11 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
             meters = []
             # check if account is currently authenticated or not
             if not await account.is_authenticated():
-                LOGGER.debug(f"USMS Account {account.user} is not logged in")
+                LOGGER.debug(f"USMS Account {account.username} is not logged in")
 
                 # log in account if session has expired
-                if await self.account.log_in():
-                    LOGGER.debug(f"USMS Account {account.user} log in successfully")
+                if await account.log_in():
+                    LOGGER.debug(f"USMS Account {account.username} log in successfully")
 
             # check for updates for every meter
             for meter in account.meters:

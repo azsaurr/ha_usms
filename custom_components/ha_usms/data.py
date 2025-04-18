@@ -71,6 +71,7 @@ class HAUSMSMeterData(AsyncUSMSMeter):
         """Return the statistic_id for the sensor associated with this meter."""
         return f"sensor.{self.unique_id}"
 
+    @property
     def metadata(self) -> StatisticMetaData:
         """Return a StatisticMetaData for the sensor associated with this meter."""
         return {
