@@ -1,3 +1,7 @@
+[project]
+name = "HA-USMS"
+version = "0.1.0"
+
 [dependency-groups]  # https://docs.astral.sh/uv/concepts/projects/dependencies/#development-dependencies
 dev = [
   "commitizen (>=4.3.0)",
@@ -9,7 +13,8 @@ dev = [
 bump_message = "bump: v$current_version → v$new_version"
 tag_format = "v$version"
 update_changelog_on_bump = true
-version_provider = "uv"
+version_files = ["custom_components/ha_usms/manifest.json:version"]
+version_provider = "pep621"
 
 [tool.ruff]  # https://docs.astral.sh/ruff/settings/
 fix = true
