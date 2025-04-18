@@ -66,7 +66,3 @@ repos:
         require_serial: true
         language: system
         types_or: [python, pyi]
-  - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v2.2.1
-    hooks:
-      - id: prettier
