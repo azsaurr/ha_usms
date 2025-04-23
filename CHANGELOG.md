@@ -1,3 +1,9 @@
+## v0.2.3 (2025-04-23)
+
+### Fix
+
+- move return statement that was misplaced inside an except statement, causing it to not be executed and the method returning None
+
 ## v0.2.2 (2025-04-23)
 
 ### Fix
