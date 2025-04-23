@@ -118,14 +118,14 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
 
                 meters.append(meter_data)
                 LOGGER.debug(f"Finished fetching updates for {meter_data.name}")
-
-                return meters
         except USMSLoginError as exception:
             LOGGER.error(exception)
             raise ConfigEntryAuthFailed(exception) from exception
         except Exception as exception:
             LOGGER.error(exception)
             raise UpdateFailed(exception) from exception
+
+            return meters
 
     def get_meter_data_by_no(self, meter_no: str) -> HAUSMSMeterData | None:
         """Return meter data by meter no."""
