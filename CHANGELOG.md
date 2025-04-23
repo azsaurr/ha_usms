@@ -1,3 +1,9 @@
+## v0.2.2 (2025-04-23)
+
+### Fix
+
+- move misplaced return statement that caused early exit
+
 ## v0.2.1 (2025-04-23)
 
 ## v0.2.0 (2025-04-19)
