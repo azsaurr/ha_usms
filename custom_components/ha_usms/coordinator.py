@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from usms.config.constants import BRUNEI_TZ
 from usms.exceptions.errors import USMSLoginError
 
 from .const import LOGGER
@@ -28,93 +30,124 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
 
     config_entry: HAUSMSConfigEntry
 
-    async def _async_update_data(self) -> Any:
+    async def _async_update_data(self) -> Any:  # noqa: PLR0915
         """Update data via library."""
         try:
             account = self.config_entry.runtime_data.account
-            meters = []
-            # check if account is currently authenticated or not
-            if not await account.is_authenticated():
-                LOGGER.debug(f"USMS Account {account.username} is not logged in")
 
-                # log in account if session has expired
-                if await account.log_in():
-                    LOGGER.debug(f"USMS Account {account.username} log in successfully")
+            has_updates = account.is_update_due()
+            if not has_updates:
+                LOGGER.debug(
+                    f"USMS account {account.username} is not due for an update"
+                )
+            else:
+                LOGGER.debug(f"USMS account {account.username} is due for an update")
+
+                has_updates = await account.refresh_data()
+                if not has_updates:
+                    LOGGER.debug(f"USMS account {account.username} has no new updates")
+                else:
+                    LOGGER.debug(f"USMS account {account.username} has new updates")
+
+            is_first_run = self.data is None
+            now = datetime.now(tz=BRUNEI_TZ)
 
             # check for updates for every meter
-            for meter in account.meters:
-                meter_name = f"{meter.get_type()} Meter {meter.get_no()}"
-                if not meter.is_update_due():
-                    LOGGER.debug(f"{meter_name} is not due for an update")
-                    # continue  # noqa: ERA001
-                else:
-                    LOGGER.debug(f"{meter_name} is due for an update")
-
-                if not await meter.refresh_data():
-                    LOGGER.debug(f"{meter_name} has no new updates")
-                    # continue  # noqa: ERA001
-                else:
-                    LOGGER.debug(f"{meter_name} has new updates")
-
+            meters = []
+            for meter in account.get_meters():
                 meter_data = HAUSMSMeterData.from_meter(meter)
 
-                # get last month's total consumption and cost
-                LOGGER.debug(
-                    f"Fetching last month's consumptions for {meter_data.name}"
-                )
-                last_month_consumptions = await meter.get_previous_n_month_consumptions(
-                    n=1
-                )
-                meter_data.last_month_total_consumption = (
-                    meter.calculate_total_consumption(last_month_consumptions)
-                )
-                meter_data.last_month_total_cost = meter.calculate_total_cost(
-                    last_month_consumptions
-                )
+                meter_data.last_refresh = account.last_refresh
 
-                # get this month's total consumption and cost
-                LOGGER.debug(
-                    f"Fetching this month's consumptions for {meter_data.name}"
-                )
-                this_month_consumptions = await meter.get_previous_n_month_consumptions(
-                    n=0
-                )
-                meter_data.this_month_total_consumption = (
-                    meter.calculate_total_consumption(this_month_consumptions)
-                )
-                meter_data.this_month_total_cost = meter.calculate_total_cost(
-                    this_month_consumptions
-                )
+                # only check on first run or
+                # only re-check if its still within the first 3 days of a new month and
+                # there has been any updates
+                if is_first_run or (
+                    now.day < 3 and has_updates  # noqa: PLR2004
+                ):
+                    # get last month's total consumption and cost
+                    LOGGER.debug(
+                        f"Fetching last month's consumptions for {meter_data.name}"
+                    )
+                    last_month_consumptions = (
+                        await meter.get_previous_n_month_consumptions(n=1)
+                    )
+                    meter_data.last_month_total_consumption = (
+                        meter.calculate_total_consumption(last_month_consumptions)
+                    )
+                    meter_data.last_month_total_cost = meter.calculate_total_cost(
+                        last_month_consumptions
+                    )
+                # just use the data from the last run
+                else:
+                    prev_meter_data = self.get_meter_data_by_no(meter_data.no)
+                    meter_data.last_month_total_consumption = (
+                        prev_meter_data.last_month_total_consumption
+                    )
+                    meter_data.last_month_total_cost = (
+                        prev_meter_data.last_month_total_cost
+                    )
 
-                # get last 3 days of hourly consumptions
-                LOGGER.debug(
-                    f"Fetching the last 3 days' consumptions for {meter_data.name}"
-                )
-                last_3_days_hourly_consumptions = (
-                    await meter.get_last_n_days_hourly_consumptions(n=3)
-                )
-                last_3_days_df = consumptions_series_to_dataframe(
-                    last_3_days_hourly_consumptions
-                )
+                # only check on first run or
+                # only re-check if there has been any updates
+                if is_first_run or has_updates:
+                    # get this month's total consumption and cost
+                    LOGGER.debug(
+                        f"Fetching this month's consumptions for {meter_data.name}"
+                    )
+                    this_month_consumptions = (
+                        await meter.get_previous_n_month_consumptions(n=0)
+                    )
+                    meter_data.this_month_total_consumption = (
+                        meter.calculate_total_consumption(this_month_consumptions)
+                    )
+                    meter_data.this_month_total_cost = meter.calculate_total_cost(
+                        this_month_consumptions
+                    )
+                # just use the data from the last run
+                else:
+                    prev_meter_data = self.get_meter_data_by_no(meter_data.no)
+                    meter_data.this_month_total_consumption = (
+                        prev_meter_data.this_month_total_consumption
+                    )
+                    meter_data.this_month_total_cost = (
+                        prev_meter_data.this_month_total_cost
+                    )
 
-                # get meter's old statistics
-                old_statistics = await get_sensor_statistics(
-                    self.hass,
-                    f"sensor.{meter_data.unique_id}",
-                )
-                old_statistics_df = statistics_to_dataframe(old_statistics)
+                meter_data.new_statistics = []
+                # only check if not on first run, and there has been any updates
+                if not is_first_run and has_updates:
+                    # get last 3 days of hourly consumptions
+                    LOGGER.debug(
+                        f"Fetching the last 3 days' consumptions for {meter_data.name}"
+                    )
+                    last_3_days_hourly_consumptions = (
+                        await meter.get_last_n_days_hourly_consumptions(n=2)
+                    )
+                    last_3_days_df = consumptions_series_to_dataframe(
+                        last_3_days_hourly_consumptions
+                    )
 
-                # combine and replace last_3_days_df into old_statistics_df
-                temp_statistics_df = old_statistics_df.combine_first(last_3_days_df)
-                # calculate cumulative sum for the state column
-                temp_statistics_df["sum"] = temp_statistics_df["state"].cumsum()
+                    # get meter's old statistics
+                    old_statistics = await get_sensor_statistics(
+                        self.hass,
+                        f"sensor.{meter_data.unique_id}",
+                    )
+                    old_statistics_df = statistics_to_dataframe(old_statistics)
 
-                # get new statistics only
-                new_statistics_df = dataframe_diff(
-                    old_statistics_df, temp_statistics_df
-                )
-                # convert statistics df to statistics list
-                meter_data.new_statistics = dataframe_to_statistics(new_statistics_df)
+                    # combine and replace last_3_days_df into old_statistics_df
+                    temp_statistics_df = old_statistics_df.combine_first(last_3_days_df)
+                    # calculate cumulative sum for the state column
+                    temp_statistics_df["sum"] = temp_statistics_df["state"].cumsum()
+
+                    # get new statistics only
+                    new_statistics_df = dataframe_diff(
+                        old_statistics_df, temp_statistics_df
+                    )
+                    # convert statistics df to statistics list
+                    meter_data.new_statistics = dataframe_to_statistics(
+                        new_statistics_df
+                    )
 
                 meters.append(meter_data)
                 LOGGER.debug(f"Finished fetching updates for {meter_data.name}")
