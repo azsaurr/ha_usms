@@ -1,3 +1,9 @@
+## v0.3.0 (2025-04-26)
+
+### Perf
+
+- speed up data update process by reducing number of requests and skipping rarely changed data
+
 ## v0.2.3 (2025-04-23)
 
 ### Fix
