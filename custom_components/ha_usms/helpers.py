@@ -1,7 +1,7 @@
 # ruff: noqa: RET504
 """Helper functions for HA-USMS."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pandas as pd
 from homeassistant.components.recorder.statistics import statistics_during_period
@@ -79,3 +79,39 @@ def dataframe_diff(
     diff_mask = old_dataframe.ne(new_dataframe)
     new_dataframe = new_dataframe[diff_mask.any(axis=1)]
     return new_dataframe
+
+
+async def get_missing_days(
+    hass: HomeAssistant = None,
+    statistic_id: str = "",
+    statistics: list | None = None,
+) -> list:
+    """Return a list of missing days in a statistic."""
+    if (hass is None or statistic_id == "") and statistics is None:
+        LOGGER.error("No statistic_id or statistics given")
+
+    if hass is not None and statistic_id != "" and statistics is None:
+        statistics = await get_sensor_statistics(hass, statistic_id)
+
+    # Return empty list (no dates) if no statistics found/given
+    if statistics == []:
+        return []
+
+    statistics = statistics_to_dataframe(statistics)
+    # List of all days from min to yesterday
+    all_days = pd.date_range(
+        statistics.index.min(),
+        datetime.now(tz=BRUNEI_TZ) - timedelta(days=1),
+        freq="D",
+    )
+    # Group by day and count rows
+    rows_per_day = statistics.groupby(statistics.index.normalize()).size()
+
+    # Find days missing or with incomplete data
+    missing_days = [
+        day.to_pydatetime()  # convert to python datetime object
+        for day in all_days
+        if day not in rows_per_day.index or rows_per_day.get(day, 0) < 24  # noqa: PLR2004
+    ]
+
+    return list(missing_days)
