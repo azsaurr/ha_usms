@@ -16,6 +16,7 @@ from .helpers import (
     consumptions_series_to_dataframe,
     dataframe_diff,
     dataframe_to_statistics,
+    get_missing_days,
     get_sensor_statistics,
     statistics_to_dataframe,
 )
@@ -30,7 +31,7 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
 
     config_entry: HAUSMSConfigEntry
 
-    async def _async_update_data(self) -> Any:  # noqa: PLR0915
+    async def _async_update_data(self) -> Any:  # noqa: PLR0912, PLR0915
         """Update data via library."""
         try:
             account = self.config_entry.runtime_data.account
@@ -117,15 +118,12 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
                 meter_data.new_statistics = []
                 # only check if not on first run, and there has been any updates
                 if not is_first_run and has_updates:
-                    # get last 3 days of hourly consumptions
+                    # get last 2 days of hourly consumptions
                     LOGGER.debug(
-                        f"Fetching the last 3 days' consumptions for {meter_data.name}"
+                        f"Fetching the last 2 days' consumptions for {meter_data.name}"
                     )
-                    last_3_days_hourly_consumptions = (
+                    new_hourly_consumptions = (
                         await meter.get_last_n_days_hourly_consumptions(n=2)
-                    )
-                    last_3_days_df = consumptions_series_to_dataframe(
-                        last_3_days_hourly_consumptions
                     )
 
                     # get meter's old statistics
@@ -135,8 +133,23 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
                     )
                     old_statistics_df = statistics_to_dataframe(old_statistics)
 
-                    # combine and replace last_3_days_df into old_statistics_df
-                    temp_statistics_df = old_statistics_df.combine_first(last_3_days_df)
+                    # Try to find gaps in data
+                    if old_statistics != []:
+                        # Fetch statistics for each missing day
+                        for date in await get_missing_days(statistics=old_statistics):
+                            day_statistics = await meter.fetch_hourly_consumptions(date)
+                            new_hourly_consumptions = day_statistics.combine_first(
+                                new_hourly_consumptions
+                            )
+
+                    new_hourly_consumptions_df = consumptions_series_to_dataframe(
+                        new_hourly_consumptions
+                    )
+
+                    # combine new_hourly_consumptions_df into old_statistics_df
+                    temp_statistics_df = old_statistics_df.combine_first(
+                        new_hourly_consumptions_df
+                    )
                     # calculate cumulative sum for the state column
                     temp_statistics_df["sum"] = temp_statistics_df["state"].cumsum()
 
