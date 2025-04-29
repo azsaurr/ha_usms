@@ -13,27 +13,25 @@ if TYPE_CHECKING:
 
     from homeassistant.components.recorder.models.statistics import StatisticMetaData
     from homeassistant.config_entries import ConfigEntry
-    from homeassistant.loader import Integration
-    from usms import AsyncUSMSAccount
 
     from .coordinator import HAUSMSDataUpdateCoordinator
 
 
-type HAUSMSConfigEntry = ConfigEntry[HAUSMSData]
+type HAUSMSConfigEntry = ConfigEntry[HAUSMSRuntimeData]
 
 
 @dataclass
-class HAUSMSData:
+class HAUSMSRuntimeData:
     """Data for the HAUSMS integration."""
 
-    account: AsyncUSMSAccount
     coordinator: HAUSMSDataUpdateCoordinator
-    integration: Integration
 
 
 @dataclass
 class HAUSMSMeterData(AsyncUSMSMeter):
     """Class to hold HA-USMS Meter data, to be stored in coordinator.data."""
+
+    last_refresh: datetime
 
     last_month_total_consumption: float
     last_month_total_cost: float

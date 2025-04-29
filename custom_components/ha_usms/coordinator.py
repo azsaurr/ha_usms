@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
+from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL, CONF_USERNAME
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from usms import AsyncUSMSAccount
 from usms.config.constants import BRUNEI_TZ
 from usms.exceptions.errors import USMSLoginError
 
-from .const import LOGGER
+from .const import DEFAULT_SCAN_INTERVAL, LOGGER
 from .data import HAUSMSMeterData
 from .helpers import (
     consumptions_series_to_dataframe,
@@ -22,6 +24,10 @@ from .helpers import (
 )
 
 if TYPE_CHECKING:
+    from logging import Logger
+
+    from homeassistant.core import HomeAssistant
+
     from .data import HAUSMSConfigEntry
 
 
@@ -31,34 +37,67 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
 
     config_entry: HAUSMSConfigEntry
 
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config_entry: HAUSMSConfigEntry,
+        logger: Logger,
+        name: str,
+    ) -> None:
+        """Initialize my coordinator."""
+        super().__init__(
+            hass,
+            logger,
+            name=name,
+            config_entry=config_entry,
+            update_interval=timedelta(
+                seconds=config_entry.options.get(
+                    CONF_SCAN_INTERVAL,
+                    DEFAULT_SCAN_INTERVAL,
+                )
+            ),
+        )
+        self.account = AsyncUSMSAccount(
+            config_entry.data[CONF_USERNAME],
+            config_entry.data[CONF_PASSWORD],
+        )
+
+    async def _async_setup(self) -> None:
+        """Set up the coordinator."""
+        await self.account.initialize()
+
     async def _async_update_data(self) -> Any:  # noqa: PLR0912, PLR0915
         """Update data via library."""
         try:
-            account = self.config_entry.runtime_data.account
-
-            has_updates = account.is_update_due()
+            has_updates = self.account.is_update_due()
             if not has_updates:
                 LOGGER.debug(
-                    f"USMS account {account.username} is not due for an update"
+                    f"USMS account {self.account.username} is not due for an update"
                 )
             else:
-                LOGGER.debug(f"USMS account {account.username} is due for an update")
+                LOGGER.debug(
+                    f"USMS account {self.account.username} is due for an update"
+                )
 
-                has_updates = await account.refresh_data()
+                has_updates = await self.account.refresh_data()
                 if not has_updates:
-                    LOGGER.debug(f"USMS account {account.username} has no new updates")
+                    LOGGER.debug(
+                        f"USMS account {self.account.username} has no new updates"
+                    )
                 else:
-                    LOGGER.debug(f"USMS account {account.username} has new updates")
+                    LOGGER.debug(
+                        f"USMS account {self.account.username} has new updates"
+                    )
 
             is_first_run = self.data is None
             now = datetime.now(tz=BRUNEI_TZ)
 
             # check for updates for every meter
             meters = []
-            for meter in account.get_meters():
+            for meter in self.account.get_meters():
                 meter_data = HAUSMSMeterData.from_meter(meter)
 
-                meter_data.last_refresh = account.last_refresh
+                meter_data.last_refresh = self.account.last_refresh
 
                 # only check on first run or
                 # only re-check if its still within the first 3 days of a new month and
