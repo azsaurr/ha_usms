@@ -41,7 +41,6 @@ async def async_setup_entry(
     # https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
     await coordinator.async_config_entry_first_refresh()
 
-    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
     entry.runtime_data = HAUSMSRuntimeData(coordinator)
@@ -57,15 +56,6 @@ async def async_unload_entry(
 ) -> bool:
     """Handle removal of an entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-
-
-async def async_reload_entry(
-    hass: HomeAssistant,
-    entry: HAUSMSConfigEntry,
-) -> None:
-    """Reload config entry."""
-    await async_unload_entry(hass, entry)
-    await async_setup_entry(hass, entry)
 
 
 async def _async_update_listener(
