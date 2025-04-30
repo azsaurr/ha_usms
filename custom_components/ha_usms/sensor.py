@@ -127,6 +127,7 @@ class HAUSMSMeterSensor(HAUSMSEntity, SensorEntity):
         attrs["unit"] = self.meter_data.get_remaining_unit()
         attrs["last_update"] = self.meter_data.get_last_updated()
         attrs["last_refresh"] = self.meter_data.get_last_refreshed()
+        attrs["next_refresh"] = self.meter_data.get_next_refresh()
 
         attrs["currency"] = self.meter_data.currency
 

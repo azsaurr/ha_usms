@@ -32,6 +32,7 @@ class HAUSMSMeterData(AsyncUSMSMeter):
     """Class to hold HA-USMS Meter data, to be stored in coordinator.data."""
 
     last_refresh: datetime
+    next_refresh: datetime
 
     last_month_total_consumption: float
     last_month_total_cost: float
@@ -84,3 +85,7 @@ class HAUSMSMeterData(AsyncUSMSMeter):
     def get_last_refreshed(self) -> datetime:
         """Return when a last refresh was attempted for the meter."""
         return self.last_refresh
+
+    def get_next_refresh(self) -> datetime:
+        """Return when the next refresh is scheduled for the meter."""
+        return self.next_refresh

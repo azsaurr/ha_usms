@@ -9,7 +9,6 @@ from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL, CONF_USERNAME
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from usms import AsyncUSMSAccount
-from usms.config.constants import BRUNEI_TZ
 from usms.exceptions.errors import USMSLoginError
 
 from .const import DEFAULT_SCAN_INTERVAL, LOGGER
@@ -90,7 +89,7 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
                     )
 
             is_first_run = self.data is None
-            now = datetime.now(tz=BRUNEI_TZ)
+            now = datetime.now().astimezone()
 
             # check for updates for every meter
             meters = []
@@ -98,6 +97,7 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
                 meter_data = HAUSMSMeterData.from_meter(meter)
 
                 meter_data.last_refresh = self.account.last_refresh
+                meter_data.next_refresh = now + self.update_interval
 
                 # only check on first run or
                 # only re-check if its still within the first 3 days of a new month and

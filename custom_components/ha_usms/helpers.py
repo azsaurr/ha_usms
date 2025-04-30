@@ -20,7 +20,7 @@ async def get_sensor_statistics(hass: HomeAssistant, statistic_id: str) -> list:
     statistics = await get_instance(hass).async_add_executor_job(
         statistics_during_period,
         hass,
-        datetime.fromtimestamp(0, tz=BRUNEI_TZ),
+        datetime.fromtimestamp(0).astimezone(),
         None,
         [statistic_id],
         "hour",
@@ -101,7 +101,7 @@ async def get_missing_days(
     # List of all days from min to yesterday
     all_days = pd.date_range(
         statistics.index.min(),
-        datetime.now(tz=BRUNEI_TZ) - timedelta(days=1),
+        datetime.now().astimezone() - timedelta(days=1),
         freq="D",
     )
     # Group by day and count rows
