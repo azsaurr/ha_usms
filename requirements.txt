@@ -1,5 +1,5 @@
 colorlog==6.9.0
-commitizen==4.6.3
+commitizen==4.7.0
 homeassistant==2025.2.4
 pip>=21.3.1
 pre_commit==4.2.0
