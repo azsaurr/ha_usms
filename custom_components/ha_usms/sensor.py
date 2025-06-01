@@ -52,9 +52,7 @@ class HAUSMSMeterSensor(HAUSMSEntity, SensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Update meter sensor with latest data from coordinator."""
-        temp_meter_data = self.coordinator.get_meter_data_by_no(
-            self.meter_data.get_no()
-        )
+        temp_meter_data = self.coordinator.get_meter_data_by_no(self.meter_data.no)
 
         if temp_meter_data.new_statistics != []:
             LOGGER.info(
@@ -66,8 +64,8 @@ class HAUSMSMeterSensor(HAUSMSEntity, SensorEntity):
                 temp_meter_data.new_statistics,
             )
 
-        if self.meter_data.get_last_refreshed() != temp_meter_data.get_last_refreshed():
-            if self.meter_data.get_last_updated() != temp_meter_data.get_last_updated():
+        if self.meter_data.last_refresh != temp_meter_data.last_refresh:
+            if self.meter_data.last_update != temp_meter_data.last_update:
                 LOGGER.info(f"{self.name} was updated")
             else:
                 LOGGER.info(f"{self.name} was refreshed, but no new updates were found")
@@ -77,12 +75,10 @@ class HAUSMSMeterSensor(HAUSMSEntity, SensorEntity):
     @property
     def device_class(self) -> str | None:
         """Return device class of the meter sensor."""
-        if (
-            "ELECTRIC" in self.meter_data.get_type().upper()
-            or "ENERGY" in self.meter_data.get_type().upper()
-        ):
+        meter_type = self.meter_data.type.upper()
+        if "ELECTRIC" in meter_type or "ENERGY" in meter_type:
             return SensorDeviceClass.ENERGY
-        if "WATER" in self.meter_data.get_type().upper():
+        if "WATER" in meter_type:
             return SensorDeviceClass.WATER
         return None
 
@@ -99,12 +95,12 @@ class HAUSMSMeterSensor(HAUSMSEntity, SensorEntity):
     @property
     def native_value(self) -> float:
         """Return the state of the meter sensor."""
-        return self.meter_data.get_remaining_unit()
+        return self.meter_data.remaining_unit
 
     @property
     def native_unit_of_measurement(self) -> str:
         """Return the unit of measurement of the meter sensor."""
-        return self.meter_data.get_unit()
+        return self.meter_data.unit
 
     @property
     def state_class(self) -> str:
@@ -123,11 +119,11 @@ class HAUSMSMeterSensor(HAUSMSEntity, SensorEntity):
         """Return the extra state attributes of the meter sensor."""
         attrs = {}
 
-        attrs["credit"] = self.meter_data.get_remaining_credit()
-        attrs["unit"] = self.meter_data.get_remaining_unit()
-        attrs["last_update"] = self.meter_data.get_last_updated()
-        attrs["last_refresh"] = self.meter_data.get_last_refreshed()
-        attrs["next_refresh"] = self.meter_data.get_next_refresh()
+        attrs["credit"] = self.meter_data.remaining_credit
+        attrs["unit"] = self.meter_data.remaining_unit
+        attrs["last_update"] = self.meter_data.last_update
+        attrs["last_refresh"] = self.meter_data.last_refresh
+        attrs["next_refresh"] = self.meter_data.next_refresh
 
         attrs["currency"] = self.meter_data.currency
 

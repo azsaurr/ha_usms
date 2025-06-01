@@ -195,9 +195,9 @@ class HAUSMSMeterDownloadMissingStatisticsButton(HAUSMSEntity, ButtonEntity):
         old_statistics_df = statistics_to_dataframe(old_statistics)
 
         # Fetch statistics for each missing day
-        missing_statistics = new_consumptions_dataframe(
-            self.meter_data.get_unit(), "h"
-        )[self.meter_data.get_unit()]
+        missing_statistics = new_consumptions_dataframe(self.meter_data.unit, "h")[
+            self.meter_data.unit
+        ]
         for date in await get_missing_days(statistics=old_statistics):
             day_statistics = await self.meter_data.fetch_hourly_consumptions(date)
             missing_statistics = day_statistics.combine_first(missing_statistics)

@@ -58,7 +58,7 @@ class HAUSMSMeterData(AsyncUSMSMeter):
     @property
     def name(self) -> str:
         """Return the name of the meter."""
-        return f"{self.get_type()} Meter {self.get_no()}"
+        return f"{self.type} Meter {self.no}"
 
     @property
     def unique_id(self) -> str:
@@ -79,13 +79,5 @@ class HAUSMSMeterData(AsyncUSMSMeter):
             "name": self.name,
             "source": "recorder",
             "statistic_id": self.statistic_id,
-            "unit_of_measurement": self.get_unit(),
+            "unit_of_measurement": self.unit,
         }
-
-    def get_last_refreshed(self) -> datetime:
-        """Return when a last refresh was attempted for the meter."""
-        return self.last_refresh
-
-    def get_next_refresh(self) -> datetime:
-        """Return when the next refresh is scheduled for the meter."""
-        return self.next_refresh

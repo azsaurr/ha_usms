@@ -7,8 +7,9 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL, CONF_USERNAME
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.httpx_client import get_async_client
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from usms import AsyncUSMSAccount
+from usms import AsyncUSMSAccount, USMSClient
 from usms.exceptions.errors import USMSLoginError
 
 from .const import DEFAULT_SCAN_INTERVAL, LOGGER
@@ -56,10 +57,17 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
                 )
             ),
         )
-        self.account = AsyncUSMSAccount(
-            config_entry.data[CONF_USERNAME],
-            config_entry.data[CONF_PASSWORD],
+
+        async_client = get_async_client(hass)
+        username = config_entry.data[CONF_USERNAME]
+        password = config_entry.data[CONF_PASSWORD]
+
+        usms_client = USMSClient(
+            client=async_client,
+            username=username,
+            password=password,
         )
+        self.account = AsyncUSMSAccount(session=usms_client)
 
     async def _async_setup(self) -> None:
         """Set up the coordinator."""
@@ -71,29 +79,25 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
             has_updates = self.account.is_update_due()
             if not has_updates:
                 LOGGER.debug(
-                    f"USMS account {self.account.username} is not due for an update"
+                    f"USMS account {self.account.reg_no} is not due for an update"
                 )
             else:
-                LOGGER.debug(
-                    f"USMS account {self.account.username} is due for an update"
-                )
+                LOGGER.debug(f"USMS account {self.account.reg_no} is due for an update")
 
                 has_updates = await self.account.refresh_data()
                 if not has_updates:
                     LOGGER.debug(
-                        f"USMS account {self.account.username} has no new updates"
+                        f"USMS account {self.account.reg_no} has no new updates"
                     )
                 else:
-                    LOGGER.debug(
-                        f"USMS account {self.account.username} has new updates"
-                    )
+                    LOGGER.debug(f"USMS account {self.account.reg_no} has new updates")
 
             is_first_run = self.data is None
             now = datetime.now().astimezone()
 
             # check for updates for every meter
             meters = []
-            for meter in self.account.get_meters():
+            for meter in self.account.meters:
                 meter_data = HAUSMSMeterData.from_meter(meter)
 
                 meter_data.last_refresh = self.account.last_refresh
