@@ -1,3 +1,18 @@
+## v0.4.0 (2025-06-03)
+
+### Feat
+
+- add next_refresh as an extra attribute to the meter sensor entity
+- add option to configure custom poll interval
+- automatically attempt to download missing statistics when polling for updates
+- add button to download consumptions data for days with missing or incomplete statistics
+
+### Fix
+
+- pre-import tzdata to avoid blocking call in async context warning
+- adapt code to usms v0.9.1 and integrate dependency injection of async httpx client
+- remove unnecessary listener and handler, causing intergration to be reloaded twice on options change
+
 ## v0.3.0 (2025-04-26)
 
 ### Perf
