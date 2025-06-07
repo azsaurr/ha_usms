@@ -16,27 +16,30 @@ Getting started is as easy as providing your login information (username and pas
 
 Each meter also has two associated buttons. The `Download and Import History` button will fetch all data and import them as long-term statistics, allowing the meter to be imported into Home Assistant's Energy dashboard. The `Recalculate Statistics` button is mostly for fixing broken statistics, if any.
 
-> **Note:** For now only electric meters are supported since I do not have the smart water meter installed yet.
-
 ## Install
-
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=azsaurr&repository=HA-USMS)
 
 ### If you have [HACS](https://hacs.xyz/) installed
 
-- Open HACS
-- Click on the 3-dot menu on the top right of the page
-- Select `Custom repositories`
-- Copy and paste this repository into the text field:
-  `https://github.com/azsaurr/ha_usms`
-- Select `Integration` from the dropdown
-- Click `Add`
+HA-USMS is now available in the [Home Assistant Community Store](https://hacs.xyz/)!
 
-### Manual installation
+Use this button and enter the URL for your Home Assistant instance for easy installation.
 
-- Download the source code of this repository
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=azsaurr&repository=HA-USMS)
+
+#### Alternatively
+
+- Open HACS from the sidebar of your Home Assistant dashboard
+- Search for `HA-USMS` in the search bar
+- Click on the 3-dot menu and click `Download`
+- Select the (default) latest version and begin the download
+- Reboot Home Assistant for changes to take effect
+
+### Manual installation without HACS
+
+- Download the latest release from here: https://github.com/azsaurr/ha_usms/releases/latest
 - Extract the downloaded `.zip` file
-- Copy and paste `./config/custom_components/ha_usms` from this repo to `<home_assistant>/config/custom_components/ha_usms`
+- Copy and paste `custom_components/ha_usms` from this repo to `<home_assistant>/config/custom_components/ha_usms`
+- Reboot Home Assistant for changes to take effect
 
 ## Configuration
 
@@ -55,8 +58,8 @@ After installation:
 - [x] Re-structure source code files
 - [x] Support for configuration via GUI
 - [ ] Go through Home Assistant's [development checklist](https://developers.home-assistant.io/docs/development_checklist)
-- [ ] Publish package to HACS store
-- [ ] Support for water meter
+- [x] Publish package to HACS store
+- [x] Support for water meter
 
 ## License
 
@@ -67,6 +70,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 This project was made possible with help from…
 
 - [Home Assistant Developer Documentation](https://developers.home-assistant.io/docs/creating_component_index)
+- [Home Assistant Community Store](https://hacs.xyz/)
 - Scaffolded using [ludeeus/integration_blueprint](https://github.com/ludeeus/integration_blueprint)
 - [homeassistant-statistics](https://github.com/klausj1/homeassistant-statistics), which provided useful reference for importing statistics
 - [USMS Portal](https://www.usms.com.bn/smartmeter/about.html) for providing access to smart meter data
