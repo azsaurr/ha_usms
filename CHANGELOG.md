@@ -1,3 +1,10 @@
+## v0.4.1 (2025-06-07)
+
+### Fix
+
+- ensure pd.Timestamp objects are converted to datetime objects in the same timezone
+- update usms depencency to v0.9.2
+
 ## v0.4.0 (2025-06-03)
 
 ### Feat
