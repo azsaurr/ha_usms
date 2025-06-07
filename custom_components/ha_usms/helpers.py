@@ -100,7 +100,7 @@ async def get_missing_days(
     statistics = statistics_to_dataframe(statistics)
     # List of all days from min to yesterday
     all_days = pd.date_range(
-        statistics.index.min(),
+        statistics.index.min().to_pydatetime().astimezone(),
         datetime.now().astimezone() - timedelta(days=1),
         freq="D",
     )
