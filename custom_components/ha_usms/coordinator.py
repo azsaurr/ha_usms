@@ -60,6 +60,8 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
         async_client = get_async_client(hass)
+        async_client.timeout = 60
+
         username = config_entry.data[CONF_USERNAME]
         password = config_entry.data[CONF_PASSWORD]
 
