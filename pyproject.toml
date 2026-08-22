@@ -9,6 +9,10 @@ update_changelog_on_bump = true
 version_files = ["custom_components/ha_usms/manifest.json:version"]
 version_provider = "pep621"
 
+[tool.pytest.ini_options]  # https://docs.pytest.org/en/latest/reference/reference.html#ini-options-ref
+addopts = "--color=yes --strict-config --strict-markers"
+testpaths = ["tests"]
+
 [tool.ruff]  # https://docs.astral.sh/ruff/settings/
 fix = true
 target-version = "py313"
@@ -26,6 +30,10 @@ target-version = "py313"
         "ISC001", # incompatible with formatter
     ]
     unfixable = ["ERA001", "F401", "F841", "T201", "T203"]
+
+        [tool.ruff.lint.per-file-ignores]
+        # Tests assert, take untyped fixtures, and use literal expectations.
+        "tests/**" = ["ANN001", "ANN201", "INP001", "PLR2004", "S101"]
 
         [tool.ruff.lint.pycodestyle]
         max-doc-length = 100
