@@ -1,3 +1,23 @@
+## v1.0.0 (2026-08-22)
+
+### Feat
+
+- water statistics, debt sensor, and usms 1.0
+- require usms 1.0.0
+- **i18n**: add strings.json covering reconfigure and options flows
+- **statistics**: build water statistics from daily consumptions
+- **sensor**: add meter debt sensor and expose topup url
+
+### Fix
+
+- **statistics**: replace has_mean with mean_type and add unit_class
+
+### Refactor
+
+- use AsyncUSMSClient
+- use lazy %-style logging
+- drop pandas and share a base class across the meter buttons
+
 ## v0.4.2 (2025-07-06)
 
 ## v0.4.1 (2025-06-07)
