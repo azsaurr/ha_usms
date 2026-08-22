@@ -95,9 +95,13 @@ class HAUSMSMeterDownloadStatisticsButton(HAUSMSMeterButton):
             "Fetching all consumptions history for %s, please wait...",
             self.meter_data.name,
         )
-        hourly_consumptions = await self.meter_data.get_all_hourly_consumptions()
+        if self.meter_data.supports_hourly_consumptions:
+            consumptions = await self.meter_data.get_all_hourly_consumptions()
+        else:
+            # Water exposes no hourly report; its history is daily-resolution only.
+            consumptions = await self.meter_data.get_all_daily_consumptions()
 
-        await self._import_statistics(map_to_statistics(hourly_consumptions))
+        await self._import_statistics(map_to_statistics(consumptions))
         LOGGER.info(
             "Finished downloading all consumptions history for %s", self.meter_data.name
         )
@@ -135,12 +139,17 @@ class HAUSMSMeterDownloadMissingStatisticsButton(HAUSMSMeterButton):
             LOGGER.error("No statistics found for %s", self.meter_data.statistic_id)
             return
 
-        # Fetch consumptions for each missing day
         missing_consumptions: dict = {}
-        for date in get_missing_days(old_statistics):
-            missing_consumptions.update(
-                await self.meter_data.fetch_hourly_consumptions(date)
-            )
+        if self.meter_data.supports_hourly_consumptions:
+            # Fetch consumptions for each missing day
+            for date in get_missing_days(old_statistics):
+                missing_consumptions.update(
+                    await self.meter_data.fetch_hourly_consumptions(date)
+                )
+        else:
+            # Water has one reading per day, so "missing hours" is meaningless.
+            # Refetching the whole daily history closes any gaps instead.
+            missing_consumptions = await self.meter_data.get_all_daily_consumptions()
 
         # Already recorded statistics win over anything refetched
         combined = {**missing_consumptions, **statistics_to_map(old_statistics)}

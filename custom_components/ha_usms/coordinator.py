@@ -170,32 +170,48 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
                 meter_data.new_statistics = []
                 # only check if not on first run, and there has been any updates
                 if not is_first_run and has_updates:
-                    # get last 2 days of hourly consumptions
-                    LOGGER.debug(
-                        "Fetching the last 2 days' consumptions for %s", meter_data.name
-                    )
-                    new_hourly_consumptions = (
-                        await meter.get_last_n_days_hourly_consumptions(n=2)
-                    )
-
                     # get meter's old statistics
                     old_statistics = await get_sensor_statistics(
                         self.hass,
                         f"sensor.{meter_data.unique_id}",
                     )
-                    # Try to find gaps in data
-                    if old_statistics != []:
-                        # Fetch statistics for each missing day
-                        for date in get_missing_days(old_statistics):
-                            day_statistics = await meter.fetch_hourly_consumptions(date)
-                            new_hourly_consumptions = {
-                                **new_hourly_consumptions,
-                                **day_statistics,
-                            }
+
+                    if meter.supports_hourly_consumptions:
+                        LOGGER.debug(
+                            "Fetching the last 2 days' consumptions for %s",
+                            meter_data.name,
+                        )
+                        new_consumptions = (
+                            await meter.get_last_n_days_hourly_consumptions(n=2)
+                        )
+                        # Try to find gaps in data
+                        if old_statistics != []:
+                            # Fetch statistics for each missing day
+                            for date in get_missing_days(old_statistics):
+                                day_statistics = await meter.fetch_hourly_consumptions(
+                                    date
+                                )
+                                new_consumptions = {
+                                    **new_consumptions,
+                                    **day_statistics,
+                                }
+                    else:
+                        # Water meters have no hourly report at all, so their
+                        # statistics come from the daily series instead. Refetching
+                        # both months also closes any gaps, so there is no separate
+                        # missing-day pass.
+                        LOGGER.debug(
+                            "Fetching this and last month's daily consumptions for %s",
+                            meter_data.name,
+                        )
+                        new_consumptions = {
+                            **await meter.get_previous_n_month_consumptions(n=1),
+                            **await meter.get_previous_n_month_consumptions(n=0),
+                        }
 
                     # Already recorded statistics win over anything refetched
                     combined = {
-                        **new_hourly_consumptions,
+                        **new_consumptions,
                         **statistics_to_map(old_statistics),
                     }
                     meter_data.new_statistics = statistics_diff(
