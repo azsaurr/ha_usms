@@ -23,7 +23,8 @@ class HAUSMSEntity(CoordinatorEntity[HAUSMSDataUpdateCoordinator]):
         """Return the device info for this entity."""
         return DeviceInfo(
             manufacturer="USMS",
-            model={self.meter_data.name},
+            # NB: this was `{self.meter_data.name}` — a set literal, not a str.
+            model=self.meter_data.name,
             identifiers={
                 (
                     self.coordinator.config_entry.domain,

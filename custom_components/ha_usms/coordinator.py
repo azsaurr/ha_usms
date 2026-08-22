@@ -10,18 +10,16 @@ from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL, CONF_USERNAME
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.httpx_client import get_async_client
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from usms import AsyncUSMSAccount, USMSClient
-from usms.exceptions.errors import USMSLoginError
+from usms import AsyncUSMSAccount, AsyncUSMSClient, USMSLoginError
 
 from .const import DEFAULT_SCAN_INTERVAL, LOGGER
 from .data import HAUSMSMeterData
 from .helpers import (
-    consumptions_series_to_dataframe,
-    dataframe_diff,
-    dataframe_to_statistics,
     get_missing_days,
     get_sensor_statistics,
-    statistics_to_dataframe,
+    map_to_statistics,
+    statistics_diff,
+    statistics_to_map,
 )
 
 if TYPE_CHECKING:
@@ -65,7 +63,7 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
         username = config_entry.data[CONF_USERNAME]
         password = config_entry.data[CONF_PASSWORD]
 
-        usms_client = USMSClient(
+        usms_client = AsyncUSMSClient(
             client=async_client,
             username=username,
             password=password,
@@ -82,18 +80,20 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
             has_updates = self.account.is_update_due()
             if not has_updates:
                 LOGGER.debug(
-                    f"USMS account {self.account.reg_no} is not due for an update"
+                    "USMS account %s is not due for an update", self.account.reg_no
                 )
             else:
-                LOGGER.debug(f"USMS account {self.account.reg_no} is due for an update")
+                LOGGER.debug(
+                    "USMS account %s is due for an update", self.account.reg_no
+                )
 
                 has_updates = await self.account.refresh_data()
                 if not has_updates:
                     LOGGER.debug(
-                        f"USMS account {self.account.reg_no} has no new updates"
+                        "USMS account %s has no new updates", self.account.reg_no
                     )
                 else:
-                    LOGGER.debug(f"USMS account {self.account.reg_no} has new updates")
+                    LOGGER.debug("USMS account %s has new updates", self.account.reg_no)
 
             is_first_run = self.data is None
             now = datetime.now().astimezone()
@@ -101,6 +101,11 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
             # check for updates for every meter
             meters = []
             for meter in self.account.meters:
+                # Debt and customer details live on the Top Up page, which is a
+                # separate request, so only refetch when something may have moved.
+                if is_first_run or has_updates:
+                    await meter.fetch_payment_info()
+
                 meter_data = HAUSMSMeterData.from_meter(meter)
 
                 meter_data.last_refresh = self.account.last_refresh
@@ -114,7 +119,7 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
                 ):
                     # get last month's total consumption and cost
                     LOGGER.debug(
-                        f"Fetching last month's consumptions for {meter_data.name}"
+                        "Fetching last month's consumptions for %s", meter_data.name
                     )
                     last_month_consumptions = (
                         await meter.get_previous_n_month_consumptions(n=1)
@@ -140,7 +145,7 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
                 if is_first_run or has_updates:
                     # get this month's total consumption and cost
                     LOGGER.debug(
-                        f"Fetching this month's consumptions for {meter_data.name}"
+                        "Fetching this month's consumptions for %s", meter_data.name
                     )
                     this_month_consumptions = (
                         await meter.get_previous_n_month_consumptions(n=0)
@@ -164,52 +169,57 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
                 meter_data.new_statistics = []
                 # only check if not on first run, and there has been any updates
                 if not is_first_run and has_updates:
-                    # get last 2 days of hourly consumptions
-                    LOGGER.debug(
-                        f"Fetching the last 2 days' consumptions for {meter_data.name}"
-                    )
-                    new_hourly_consumptions = (
-                        await meter.get_last_n_days_hourly_consumptions(n=2)
-                    )
-
                     # get meter's old statistics
                     old_statistics = await get_sensor_statistics(
                         self.hass,
                         f"sensor.{meter_data.unique_id}",
                     )
-                    old_statistics_df = statistics_to_dataframe(old_statistics)
 
-                    # Try to find gaps in data
-                    if old_statistics != []:
-                        # Fetch statistics for each missing day
-                        for date in await get_missing_days(statistics=old_statistics):
-                            day_statistics = await meter.fetch_hourly_consumptions(date)
-                            new_hourly_consumptions = day_statistics.combine_first(
-                                new_hourly_consumptions
-                            )
+                    if meter.supports_hourly_consumptions:
+                        LOGGER.debug(
+                            "Fetching the last 2 days' consumptions for %s",
+                            meter_data.name,
+                        )
+                        new_consumptions = (
+                            await meter.get_last_n_days_hourly_consumptions(n=2)
+                        )
+                        # Try to find gaps in data
+                        if old_statistics != []:
+                            # Fetch statistics for each missing day
+                            for date in get_missing_days(old_statistics):
+                                day_statistics = await meter.fetch_hourly_consumptions(
+                                    date
+                                )
+                                new_consumptions = {
+                                    **new_consumptions,
+                                    **day_statistics,
+                                }
+                    else:
+                        # Water meters have no hourly report at all, so their
+                        # statistics come from the daily series instead. Refetching
+                        # both months also closes any gaps, so there is no separate
+                        # missing-day pass.
+                        LOGGER.debug(
+                            "Fetching this and last month's daily consumptions for %s",
+                            meter_data.name,
+                        )
+                        new_consumptions = {
+                            **await meter.get_previous_n_month_consumptions(n=1),
+                            **await meter.get_previous_n_month_consumptions(n=0),
+                        }
 
-                    new_hourly_consumptions_df = consumptions_series_to_dataframe(
-                        new_hourly_consumptions
-                    )
-
-                    # combine new_hourly_consumptions_df into old_statistics_df
-                    temp_statistics_df = old_statistics_df.combine_first(
-                        new_hourly_consumptions_df
-                    )
-                    # calculate cumulative sum for the state column
-                    temp_statistics_df["sum"] = temp_statistics_df["state"].cumsum()
-
-                    # get new statistics only
-                    new_statistics_df = dataframe_diff(
-                        old_statistics_df, temp_statistics_df
-                    )
-                    # convert statistics df to statistics list
-                    meter_data.new_statistics = dataframe_to_statistics(
-                        new_statistics_df
+                    # Already recorded statistics win over anything refetched
+                    combined = {
+                        **new_consumptions,
+                        **statistics_to_map(old_statistics),
+                    }
+                    meter_data.new_statistics = statistics_diff(
+                        old_statistics,
+                        map_to_statistics(combined),
                     )
 
                 meters.append(meter_data)
-                LOGGER.debug(f"Finished fetching updates for {meter_data.name}")
+                LOGGER.debug("Finished fetching updates for %s", meter_data.name)
 
             return meters  # noqa: TRY300
         except USMSLoginError as exception:
