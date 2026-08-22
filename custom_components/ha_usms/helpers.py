@@ -16,7 +16,7 @@ from .const import HOURS_PER_DAY, LOGGER
 async def get_sensor_statistics(hass: HomeAssistant, statistic_id: str) -> list:
     """Return the sensor statistics for a given statistic_id."""
     LOGGER.debug(
-        f"Retrieving statistics from recorder for statistic_id: {statistic_id}"
+        "Retrieving statistics from recorder for statistic_id: %s", statistic_id
     )
     statistics = await get_instance(hass).async_add_executor_job(
         statistics_during_period,
@@ -31,10 +31,10 @@ async def get_sensor_statistics(hass: HomeAssistant, statistic_id: str) -> list:
     statistics = statistics.get(statistic_id, [])
     if statistics != []:
         LOGGER.debug(
-            f"Retrieved statistics from recorder for statistic_id: {statistic_id}"
+            "Retrieved statistics from recorder for statistic_id: %s", statistic_id
         )
     else:
-        LOGGER.debug(f"No statistics recorded yet for statistic_id: {statistic_id}")
+        LOGGER.debug("No statistics recorded yet for statistic_id: %s", statistic_id)
     return statistics
 
 

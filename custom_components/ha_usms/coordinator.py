@@ -81,18 +81,20 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
             has_updates = self.account.is_update_due()
             if not has_updates:
                 LOGGER.debug(
-                    f"USMS account {self.account.reg_no} is not due for an update"
+                    "USMS account %s is not due for an update", self.account.reg_no
                 )
             else:
-                LOGGER.debug(f"USMS account {self.account.reg_no} is due for an update")
+                LOGGER.debug(
+                    "USMS account %s is due for an update", self.account.reg_no
+                )
 
                 has_updates = await self.account.refresh_data()
                 if not has_updates:
                     LOGGER.debug(
-                        f"USMS account {self.account.reg_no} has no new updates"
+                        "USMS account %s has no new updates", self.account.reg_no
                     )
                 else:
-                    LOGGER.debug(f"USMS account {self.account.reg_no} has new updates")
+                    LOGGER.debug("USMS account %s has new updates", self.account.reg_no)
 
             is_first_run = self.data is None
             now = datetime.now().astimezone()
@@ -113,7 +115,7 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
                 ):
                     # get last month's total consumption and cost
                     LOGGER.debug(
-                        f"Fetching last month's consumptions for {meter_data.name}"
+                        "Fetching last month's consumptions for %s", meter_data.name
                     )
                     last_month_consumptions = (
                         await meter.get_previous_n_month_consumptions(n=1)
@@ -139,7 +141,7 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
                 if is_first_run or has_updates:
                     # get this month's total consumption and cost
                     LOGGER.debug(
-                        f"Fetching this month's consumptions for {meter_data.name}"
+                        "Fetching this month's consumptions for %s", meter_data.name
                     )
                     this_month_consumptions = (
                         await meter.get_previous_n_month_consumptions(n=0)
@@ -165,7 +167,7 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
                 if not is_first_run and has_updates:
                     # get last 2 days of hourly consumptions
                     LOGGER.debug(
-                        f"Fetching the last 2 days' consumptions for {meter_data.name}"
+                        "Fetching the last 2 days' consumptions for %s", meter_data.name
                     )
                     new_hourly_consumptions = (
                         await meter.get_last_n_days_hourly_consumptions(n=2)
@@ -197,7 +199,7 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
                     )
 
                 meters.append(meter_data)
-                LOGGER.debug(f"Finished fetching updates for {meter_data.name}")
+                LOGGER.debug("Finished fetching updates for %s", meter_data.name)
 
             return meters  # noqa: TRY300
         except USMSLoginError as exception:

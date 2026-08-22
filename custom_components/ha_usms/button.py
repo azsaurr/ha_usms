@@ -92,13 +92,14 @@ class HAUSMSMeterDownloadStatisticsButton(HAUSMSMeterButton):
     async def async_press(self) -> None:
         """Press the button."""
         LOGGER.info(
-            f"Fetching all consumptions history for {self.meter_data.name}, please wait..."  # noqa: E501
+            "Fetching all consumptions history for %s, please wait...",
+            self.meter_data.name,
         )
         hourly_consumptions = await self.meter_data.get_all_hourly_consumptions()
 
         await self._import_statistics(map_to_statistics(hourly_consumptions))
         LOGGER.info(
-            f"Finished downloading all consumptions history for {self.meter_data.name}"
+            "Finished downloading all consumptions history for %s", self.meter_data.name
         )
 
 
@@ -112,12 +113,12 @@ class HAUSMSMeterRecalculateStatisticsButton(HAUSMSMeterButton):
         """Press the button."""
         statistics = await self._get_statistics()
         if not statistics:
-            LOGGER.error(f"No statistics found for {self.meter_data.statistic_id}")
+            LOGGER.error("No statistics found for %s", self.meter_data.statistic_id)
             return
 
         await self._import_statistics(map_to_statistics(statistics_to_map(statistics)))
         LOGGER.info(
-            f"Finished recalculating statistics for {self.meter_data.statistic_id}"
+            "Finished recalculating statistics for %s", self.meter_data.statistic_id
         )
 
 
@@ -131,7 +132,7 @@ class HAUSMSMeterDownloadMissingStatisticsButton(HAUSMSMeterButton):
         """Press the button."""
         old_statistics = await self._get_statistics()
         if not old_statistics:
-            LOGGER.error(f"No statistics found for {self.meter_data.statistic_id}")
+            LOGGER.error("No statistics found for %s", self.meter_data.statistic_id)
             return
 
         # Fetch consumptions for each missing day
@@ -147,5 +148,6 @@ class HAUSMSMeterDownloadMissingStatisticsButton(HAUSMSMeterButton):
 
         await self._import_statistics(new_statistics)
         LOGGER.info(
-            f"Finished downloading missing statistics for {self.meter_data.statistic_id}"  # noqa: E501
+            "Finished downloading missing statistics for %s",
+            self.meter_data.statistic_id,
         )

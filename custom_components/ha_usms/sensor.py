@@ -56,7 +56,9 @@ class HAUSMSMeterSensor(HAUSMSEntity, SensorEntity):
 
         if temp_meter_data.new_statistics != []:
             LOGGER.info(
-                f"Importing {len(temp_meter_data.new_statistics)} new statistics for statistic_id: {self.meter_data.statistic_id}"  # noqa: E501
+                "Importing %s new statistics for statistic_id: %s",
+                len(temp_meter_data.new_statistics),
+                self.meter_data.statistic_id,
             )
             async_import_statistics(
                 self.hass,
@@ -66,9 +68,11 @@ class HAUSMSMeterSensor(HAUSMSEntity, SensorEntity):
 
         if self.meter_data.last_refresh != temp_meter_data.last_refresh:
             if self.meter_data.last_update != temp_meter_data.last_update:
-                LOGGER.info(f"{self.name} was updated")
+                LOGGER.info("%s was updated", self.name)
             else:
-                LOGGER.info(f"{self.name} was refreshed, but no new updates were found")
+                LOGGER.info(
+                    "%s was refreshed, but no new updates were found", self.name
+                )
             self.meter_data = temp_meter_data
             self.async_write_ha_state()
 
