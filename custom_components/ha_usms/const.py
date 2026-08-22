@@ -8,6 +8,11 @@ LOGGER: Logger = getLogger(__package__)
 DOMAIN = "ha_usms"
 ATTRIBUTION = "Data fetched from https://www.usms.com.bn/"
 
+# Shown as the "Visit" link on the device page, alongside the per-meter Top Up
+# buttons. The device covers the whole account, so this points at the account
+# home rather than any one meter's top up page.
+ACCOUNT_URL: Final = "https://www.usms.com.bn/SmartMeter/Home"
+
 DEFAULT_SCAN_INTERVAL = 60 * 60
 MIN_SCAN_INTERVAL = 10 * 60
 

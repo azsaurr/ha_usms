@@ -52,6 +52,9 @@
             }
         },
         "button": {
+            "top_up": {
+                "name": "Top up"
+            },
             "download_statistics": {
                 "name": "Download statistics"
             },

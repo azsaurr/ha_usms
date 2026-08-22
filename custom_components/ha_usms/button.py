@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from homeassistant.components import persistent_notification
 from homeassistant.components.button import ButtonDeviceClass, ButtonEntity
 from homeassistant.components.recorder.statistics import async_import_statistics
 from slugify import slugify
@@ -38,6 +39,7 @@ async def async_setup_entry(
         button_class(coordinator, meter_data)
         for meter_data in coordinator.data
         for button_class in (
+            HAUSMSMeterTopUpButton,
             HAUSMSMeterDownloadStatisticsButton,
             HAUSMSMeterRecalculateStatisticsButton,
             HAUSMSMeterDownloadMissingStatisticsButton,
@@ -160,3 +162,33 @@ class HAUSMSMeterDownloadMissingStatisticsButton(HAUSMSMeterButton):
             "Finished downloading missing statistics for %s",
             self.meter_data.statistic_id,
         )
+
+
+class HAUSMSMeterTopUpButton(HAUSMSMeterButton):
+    """Surface the meter's USMS Top Up page.
+
+    Topping up cannot be automated: USMS hands the payment off to the bank's
+    secure site for card entry. A button press also cannot open a browser tab,
+    since it runs on the server, so this raises a notification carrying the
+    link instead - which is clickable from any dashboard or the companion app.
+    """
+
+    _name_suffix = "Top Up"
+
+    async def async_press(self) -> None:
+        """Press the button."""
+        persistent_notification.async_create(
+            self.hass,
+            title=f"Top up {self.meter_data.name}",
+            message=(
+                f"Remaining credit: **{self.meter_data.currency} "
+                f"{self.meter_data.remaining_credit:.2f}** "
+                f"({self.meter_data.remaining_unit} {self.meter_data.unit})\n\n"
+                f"[Open the USMS top up page]({self.meter_data.topup_url})\n\n"
+                "Payment is completed on your bank's secure site."
+            ),
+            # A fixed id means repeated presses replace the notice rather than
+            # stacking up copies of it.
+            notification_id=f"{self.meter_data.unique_id}_topup",
+        )
+        LOGGER.debug("Raised top up notification for %s", self.meter_data.name)
