@@ -5,8 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Self
 
+from homeassistant.components.recorder.models.statistics import StatisticMeanType
 from slugify import slugify
 from usms import AsyncUSMSMeter
+
+from .const import UNIT_CLASSES
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -74,10 +77,14 @@ class HAUSMSMeterData(AsyncUSMSMeter):
     def metadata(self) -> StatisticMetaData:
         """Return a StatisticMetaData for the sensor associated with this meter."""
         return {
-            "has_mean": False,
+            # Consumption is a cumulative total, never a mean. `mean_type`
+            # replaces the deprecated `has_mean` flag, which HA Core removes
+            # in 2026.11 along with making `unit_class` mandatory.
+            "mean_type": StatisticMeanType.NONE,
             "has_sum": True,
             "name": self.name,
             "source": "recorder",
             "statistic_id": self.statistic_id,
+            "unit_class": UNIT_CLASSES.get(self.unit),
             "unit_of_measurement": self.unit,
         }
