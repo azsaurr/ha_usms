@@ -1,3 +1,9 @@
+## v1.1.0 (2026-08-22)
+
+### Feat
+
+- **button**: add a top up button that surfaces the USMS payment link
+
 ## v1.0.0 (2026-08-22)
 
 ### Feat

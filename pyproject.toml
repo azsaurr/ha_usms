@@ -1,6 +1,6 @@
 [project]
 name = "HA-USMS"
-version = "1.0.0"
+version = "1.1.0"
 
 [tool.commitizen]  # https://commitizen-tools.github.io/commitizen/config/
 bump_message = "bump: v$current_version → v$new_version"
