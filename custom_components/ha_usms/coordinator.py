@@ -10,7 +10,7 @@ from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL, CONF_USERNAME
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.httpx_client import get_async_client
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from usms import AsyncUSMSAccount, USMSClient, USMSLoginError
+from usms import AsyncUSMSAccount, AsyncUSMSClient, USMSLoginError
 
 from .const import DEFAULT_SCAN_INTERVAL, LOGGER
 from .data import HAUSMSMeterData
@@ -63,7 +63,7 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
         username = config_entry.data[CONF_USERNAME]
         password = config_entry.data[CONF_PASSWORD]
 
-        usms_client = USMSClient(
+        usms_client = AsyncUSMSClient(
             client=async_client,
             username=username,
             password=password,
