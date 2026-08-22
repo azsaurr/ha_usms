@@ -11,6 +11,9 @@ ATTRIBUTION = "Data fetched from https://www.usms.com.bn/"
 DEFAULT_SCAN_INTERVAL = 60 * 60
 MIN_SCAN_INTERVAL = 10 * 60
 
+# A day's worth of hourly statistics; fewer than this means the day is incomplete.
+HOURS_PER_DAY: Final = 24
+
 ELECTRIC_UNIT: Final = "kWh"
 WATER_UNIT: Final = "m³"
 

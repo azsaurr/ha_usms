@@ -16,12 +16,11 @@ from usms.exceptions.errors import USMSLoginError
 from .const import DEFAULT_SCAN_INTERVAL, LOGGER
 from .data import HAUSMSMeterData
 from .helpers import (
-    consumptions_series_to_dataframe,
-    dataframe_diff,
-    dataframe_to_statistics,
     get_missing_days,
     get_sensor_statistics,
-    statistics_to_dataframe,
+    map_to_statistics,
+    statistics_diff,
+    statistics_to_map,
 )
 
 if TYPE_CHECKING:
@@ -177,35 +176,24 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
                         self.hass,
                         f"sensor.{meter_data.unique_id}",
                     )
-                    old_statistics_df = statistics_to_dataframe(old_statistics)
-
                     # Try to find gaps in data
                     if old_statistics != []:
                         # Fetch statistics for each missing day
-                        for date in await get_missing_days(statistics=old_statistics):
+                        for date in get_missing_days(old_statistics):
                             day_statistics = await meter.fetch_hourly_consumptions(date)
-                            new_hourly_consumptions = day_statistics.combine_first(
-                                new_hourly_consumptions
-                            )
+                            new_hourly_consumptions = {
+                                **new_hourly_consumptions,
+                                **day_statistics,
+                            }
 
-                    new_hourly_consumptions_df = consumptions_series_to_dataframe(
-                        new_hourly_consumptions
-                    )
-
-                    # combine new_hourly_consumptions_df into old_statistics_df
-                    temp_statistics_df = old_statistics_df.combine_first(
-                        new_hourly_consumptions_df
-                    )
-                    # calculate cumulative sum for the state column
-                    temp_statistics_df["sum"] = temp_statistics_df["state"].cumsum()
-
-                    # get new statistics only
-                    new_statistics_df = dataframe_diff(
-                        old_statistics_df, temp_statistics_df
-                    )
-                    # convert statistics df to statistics list
-                    meter_data.new_statistics = dataframe_to_statistics(
-                        new_statistics_df
+                    # Already recorded statistics win over anything refetched
+                    combined = {
+                        **new_hourly_consumptions,
+                        **statistics_to_map(old_statistics),
+                    }
+                    meter_data.new_statistics = statistics_diff(
+                        old_statistics,
+                        map_to_statistics(combined),
                     )
 
                 meters.append(meter_data)
