@@ -102,6 +102,11 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
             # check for updates for every meter
             meters = []
             for meter in self.account.meters:
+                # Debt and customer details live on the Top Up page, which is a
+                # separate request, so only refetch when something may have moved.
+                if is_first_run or has_updates:
+                    await meter.fetch_payment_info()
+
                 meter_data = HAUSMSMeterData.from_meter(meter)
 
                 meter_data.last_refresh = self.account.last_refresh
