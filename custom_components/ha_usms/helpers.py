@@ -186,12 +186,34 @@ async def migrate_legacy_statistics(
     existing = await get_instance(hass).async_add_executor_job(
         partial(get_metadata, hass, statistic_ids={new_statistic_id})
     )
-    if existing:
-        return  # already migrated
 
     legacy = await get_sensor_statistics(hass, legacy_statistic_id)
     if not legacy:
         return  # nothing to migrate
+
+    if existing:
+        # The external series already exists, but the legacy one is still here,
+        # so a previous run copied without reaching the clear step. Finish the
+        # job rather than returning early, which would otherwise strand the
+        # legacy series - and the repair issue it causes - forever.
+        migrated = await get_sensor_statistics(hass, new_statistic_id)
+        if len(migrated) >= len(legacy):
+            get_instance(hass).async_clear_statistics([legacy_statistic_id])
+            LOGGER.info(
+                "Cleared the legacy series %s; %s already holds %d rows",
+                legacy_statistic_id,
+                new_statistic_id,
+                len(migrated),
+            )
+        else:
+            LOGGER.warning(
+                "%s holds %d of %d rows; leaving %s in place for a later retry",
+                new_statistic_id,
+                len(migrated),
+                len(legacy),
+                legacy_statistic_id,
+            )
+        return
 
     backup_dir = Path(hass.config.path("ha_usms", "statistics_backup"))
     await hass.async_add_executor_job(
