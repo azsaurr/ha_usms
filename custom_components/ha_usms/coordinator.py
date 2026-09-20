@@ -80,16 +80,37 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_setup(self) -> None:
         """Set up the coordinator."""
         await self.account.initialize()
-        # One-time move of each meter's long-term statistics off the recorder
-        # source (sensor.<id>) onto an external source (ha_usms:<id>). Safe to
-        # run every startup: it no-ops once the external id exists, and it backs
-        # up and verifies before removing anything.
+        # Move each meter's long-term statistics off the recorder source
+        # (sensor.<id>) onto an external one (ha_usms:<id>). Deliberately a
+        # background task rather than awaited here: verifying the copy means
+        # waiting for a recorder commit, and `commit_interval` is configurable
+        # (300 s is common), which would otherwise stall - and then cancel -
+        # config entry setup. Safe to run every startup: it no-ops once the
+        # external id exists, and it backs up and verifies before removing
+        # anything.
+        self.config_entry.async_create_background_task(
+            self.hass,
+            self._async_migrate_statistics(),
+            name="ha_usms_statistics_migration",
+        )
+
+    async def _async_migrate_statistics(self) -> None:
+        """Migrate every meter's legacy statistics, one meter at a time."""
         for meter in self.account.meters:
-            await migrate_legacy_statistics(
-                self.hass,
-                legacy_statistic_id=f"sensor.{HAUSMSMeterData.from_meter(meter).unique_id}",
-                new_metadata=HAUSMSMeterData.from_meter(meter).metadata,
-            )
+            meter_data = HAUSMSMeterData.from_meter(meter)
+            try:
+                await migrate_legacy_statistics(
+                    self.hass,
+                    legacy_statistic_id=f"sensor.{meter_data.unique_id}",
+                    new_metadata=meter_data.metadata,
+                )
+            except Exception:  # noqa: BLE001 - a migration must never take the integration down
+                # The legacy series is left untouched and retried on restart.
+                LOGGER.exception(
+                    "Statistics migration failed for %s; the legacy series is "
+                    "unchanged and will be retried on the next restart",
+                    meter_data.name,
+                )
 
     async def _async_update_data(self) -> Any:  # noqa: PLR0912, PLR0915
         """Update data via library."""
