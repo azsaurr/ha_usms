@@ -1,3 +1,11 @@
+## v1.2.2 (2026-09-20)
+
+### Fix
+
+- **statistics**: finish a migration that copied but never cleared
+- **sensor**: drop the invalid state_class from the projection sensors
+- **coordinator**: run the statistics migration as a background task
+
 ## v1.2.1 (2026-09-20)
 
 ### Fix
