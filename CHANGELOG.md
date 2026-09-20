@@ -1,3 +1,18 @@
+## v1.2.0 (2026-09-20)
+
+### Feat
+
+- **sensor**: add month-end consumption, cost and credit-runway projections
+- **statistics**: publish consumption as external statistics with a verified migration
+
+### Fix
+
+- **coordinator**: reauth on a silently dropped USMS session
+
+### Refactor
+
+- **projection**: source the month projection from the usms library
+
 ## v1.1.0 (2026-08-22)
 
 ### Feat
