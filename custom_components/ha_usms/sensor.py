@@ -5,11 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from homeassistant.components.recorder.statistics import async_add_external_statistics
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorEntity,
-    SensorStateClass,
-)
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.core import callback
 
 from .const import LOGGER
@@ -257,7 +253,10 @@ class HAUSMSProjectedConsumptionSensor(HAUSMSProjectionSensor):
 
     _name_suffix = "Projected Month Consumption"
     _id_suffix = "projected_month_consumption"
-    _attr_state_class = SensorStateClass.MEASUREMENT
+    # No state_class: a projection is a forecast that moves up and down as the
+    # estimate is revised, not a reading to accumulate. Home Assistant also
+    # rejects "measurement" alongside the energy/water device classes.
+    _attr_state_class = None
 
     @property
     def device_class(self) -> str | None:
@@ -296,7 +295,7 @@ class HAUSMSProjectedCostSensor(HAUSMSProjectionSensor):
     _name_suffix = "Projected Month Cost"
     _id_suffix = "projected_month_cost"
     _attr_device_class = SensorDeviceClass.MONETARY
-    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_state_class = None
 
     @property
     def native_value(self) -> float | None:
