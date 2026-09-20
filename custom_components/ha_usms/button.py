@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from homeassistant.components import persistent_notification
 from homeassistant.components.button import ButtonDeviceClass, ButtonEntity
-from homeassistant.components.recorder.statistics import async_import_statistics
+from homeassistant.components.recorder.statistics import async_add_external_statistics
 from slugify import slugify
 
 from .const import LOGGER
@@ -78,7 +78,7 @@ class HAUSMSMeterButton(HAUSMSEntity, ButtonEntity):
     async def _import_statistics(self, statistics: list) -> None:
         """Write the given statistics into the recorder."""
         await self.hass.async_add_executor_job(
-            async_import_statistics,
+            async_add_external_statistics,
             self.hass,
             self.meter_data.metadata,
             statistics,

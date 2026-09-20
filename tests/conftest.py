@@ -31,9 +31,10 @@ def _stub_homeassistant() -> None:
     ):
         sys.modules.setdefault(name, types.ModuleType(name))
 
-    sys.modules[
-        "homeassistant.components.recorder.statistics"
-    ].statistics_during_period = None
+    stats = sys.modules["homeassistant.components.recorder.statistics"]
+    stats.statistics_during_period = None
+    stats.async_add_external_statistics = None
+    stats.get_metadata = None
     sys.modules["homeassistant.core"].HomeAssistant = object
     sys.modules["homeassistant.helpers.recorder"].get_instance = None
 

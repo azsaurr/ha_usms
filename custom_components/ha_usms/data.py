@@ -9,7 +9,7 @@ from homeassistant.components.recorder.models.statistics import StatisticMeanTyp
 from slugify import slugify
 from usms import AsyncUSMSMeter
 
-from .const import UNIT_CLASSES
+from .const import EXTERNAL_STATISTIC_SOURCE, UNIT_CLASSES
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -45,6 +45,13 @@ class HAUSMSMeterData(AsyncUSMSMeter):
 
     new_statistics: list
 
+    # Projection of the current calendar month, filled in by the coordinator.
+    # None until enough history exists (a fresh install with no recorded days).
+    projected_month_consumption: float | None = None
+    projected_month_cost: float | None = None
+    projected_daily_consumption: float | None = None
+    credit_runs_out_at: datetime | None = None
+
     currency: str = "BND"
 
     @classmethod
@@ -70,8 +77,13 @@ class HAUSMSMeterData(AsyncUSMSMeter):
 
     @property
     def statistic_id(self) -> str:
-        """Return the statistic_id for the sensor associated with this meter."""
-        return f"sensor.{self.unique_id}"
+        """Return the external statistic_id for this meter's consumption.
+
+        External statistics use ``<source>:<object_id>`` (a colon, not a dot)
+        so the recorder treats them as externally managed and does not raise a
+        state-class repair against the remaining-units sensor.
+        """
+        return f"{EXTERNAL_STATISTIC_SOURCE}:{self.unique_id}"
 
     @property
     def metadata(self) -> StatisticMetaData:
@@ -83,7 +95,7 @@ class HAUSMSMeterData(AsyncUSMSMeter):
             "mean_type": StatisticMeanType.NONE,
             "has_sum": True,
             "name": self.name,
-            "source": "recorder",
+            "source": EXTERNAL_STATISTIC_SOURCE,
             "statistic_id": self.statistic_id,
             "unit_class": UNIT_CLASSES.get(self.unit),
             "unit_of_measurement": self.unit,

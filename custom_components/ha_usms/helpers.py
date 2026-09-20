@@ -1,16 +1,30 @@
 """Helper functions for HA-USMS."""
 
+from __future__ import annotations
+
+import json
+from calendar import monthrange
 from collections import Counter
 from datetime import date as date_type
 from datetime import datetime, timedelta
+from functools import partial
 from itertools import accumulate
+from pathlib import Path
+from typing import TYPE_CHECKING
 
-from homeassistant.components.recorder.statistics import statistics_during_period
-from homeassistant.core import HomeAssistant
+from homeassistant.components.recorder.statistics import (
+    async_add_external_statistics,
+    get_metadata,
+    statistics_during_period,
+)
 from homeassistant.helpers.recorder import get_instance
 from usms import BRUNEI_TZ
 
-from .const import HOURS_PER_DAY, LOGGER
+from .const import HOURS_PER_DAY, LOGGER, PROJECTION_TRAILING_DAYS
+
+if TYPE_CHECKING:
+    from homeassistant.components.recorder.models.statistics import StatisticMetaData
+    from homeassistant.core import HomeAssistant
 
 
 async def get_sensor_statistics(hass: HomeAssistant, statistic_id: str) -> list:
@@ -115,3 +129,174 @@ def get_missing_days(statistics: list) -> list[datetime]:
         day += timedelta(days=1)
 
     return missing_days
+
+
+def project_month_total(
+    daily_consumption: dict[date_type, float],
+    now: datetime,
+) -> tuple[float, float] | None:
+    """
+    Project the current calendar month's total consumption.
+
+    Returns ``(projected_total, projected_daily_rate)`` or ``None`` when there
+    is no usable history yet.
+
+    The projection is month-to-date consumption plus the remaining days times a
+    blended daily rate: half a trailing mean of the last
+    ``PROJECTION_TRAILING_DAYS`` complete days, half the month-to-date rate. The
+    blend was chosen by backtesting two years of hourly data; it beats a plain
+    trailing mean early in the month (when few days have accrued) and a plain
+    month-to-date rate later, while using only arithmetic so it runs anywhere.
+    The method is account-independent: every input is derived from this meter's
+    own recorded history.
+    """
+    if not daily_consumption:
+        return None
+
+    today = now.date()
+    days_in_month = monthrange(today.year, today.month)[1]
+
+    # Month-to-date: sum of complete days already elapsed this month. Today
+    # itself is excluded because it is still partial and would drag the rate
+    # down; it is instead treated as one of the remaining days.
+    month_start = today.replace(day=1)
+    mtd_days = {
+        day: kwh for day, kwh in daily_consumption.items() if month_start <= day < today
+    }
+    days_elapsed = len(mtd_days)
+    mtd_total = sum(mtd_days.values())
+
+    # Trailing mean of the most recent complete days, across month boundaries.
+    complete = sorted(day for day in daily_consumption if day < today)
+    if not complete:
+        return None
+    trailing = complete[-PROJECTION_TRAILING_DAYS:]
+    trailing_rate = sum(daily_consumption[day] for day in trailing) / len(trailing)
+
+    mtd_rate = mtd_total / days_elapsed if days_elapsed else trailing_rate
+    daily_rate = 0.5 * trailing_rate + 0.5 * mtd_rate
+
+    remaining_days = days_in_month - today.day + 1  # today is still to come
+    projected = mtd_total + remaining_days * daily_rate
+    return projected, daily_rate
+
+
+def daily_from_hourly(statistics: list) -> dict[date_type, float]:
+    """Collapse recorder hourly ``state`` rows into per-day consumption totals."""
+    daily: dict[date_type, float] = {}
+    for start, state in statistics_to_map(statistics).items():
+        daily[start.date()] = daily.get(start.date(), 0.0) + state
+    return daily
+
+
+def daily_change_map(statistics: list) -> dict[date_type, float]:
+    """Return day-period recorder rows as a ``{date: consumption}`` mapping."""
+    daily: dict[date_type, float] = {}
+    for row in statistics:
+        start = datetime.fromtimestamp(row["start"], tz=BRUNEI_TZ).date()
+        change = row.get("change")
+        if change is not None:
+            daily[start] = change
+    return daily
+
+
+async def get_daily_statistics(
+    hass: HomeAssistant,
+    statistic_id: str,
+    days: int = 45,
+) -> list:
+    """Return the last ``days`` of daily consumption for a statistic_id.
+
+    ``change`` gives the consumption within each day (the delta of the
+    cumulative sum), which is what the projection needs. A short window keeps
+    this cheap to run every poll.
+    """
+    start = (datetime.now(tz=BRUNEI_TZ) - timedelta(days=days)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    statistics = await get_instance(hass).async_add_executor_job(
+        statistics_during_period,
+        hass,
+        start,
+        None,
+        {statistic_id},
+        "day",
+        None,
+        {"change"},
+    )
+    return statistics.get(statistic_id, [])
+
+
+async def migrate_legacy_statistics(
+    hass: HomeAssistant,
+    legacy_statistic_id: str,
+    new_metadata: StatisticMetaData,
+) -> None:
+    """Move a meter's long-term statistics from a recorder id to an external id.
+
+    Copies every legacy hourly row to the new external ``statistic_id``, writes a
+    JSON backup of the legacy rows first, verifies the copy, and only then clears
+    the legacy series. Idempotent: it no-ops once the external id already exists,
+    and it never deletes anything it has not first backed up and verified, so a
+    failed run leaves the original data intact.
+    """
+    new_statistic_id = new_metadata["statistic_id"]
+
+    existing = await get_instance(hass).async_add_executor_job(
+        partial(get_metadata, hass, statistic_ids={new_statistic_id})
+    )
+    if existing:
+        return  # already migrated
+
+    legacy = await get_sensor_statistics(hass, legacy_statistic_id)
+    if not legacy:
+        return  # nothing to migrate
+
+    backup_dir = Path(hass.config.path("ha_usms", "statistics_backup"))
+    await hass.async_add_executor_job(
+        partial(backup_dir.mkdir, parents=True, exist_ok=True)
+    )
+    stamp = datetime.now(tz=BRUNEI_TZ).strftime("%Y%m%d-%H%M%S")
+    backup_file = backup_dir / f"{legacy_statistic_id}-{stamp}.json"
+    payload = json.dumps(
+        {"statistic_id": legacy_statistic_id, "rows": legacy}, default=str, indent=2
+    )
+    await hass.async_add_executor_job(backup_file.write_text, payload)
+    LOGGER.info(
+        "Backed up %d legacy statistics rows for %s to %s",
+        len(legacy),
+        legacy_statistic_id,
+        backup_file,
+    )
+
+    statistics = [
+        {
+            "start": datetime.fromtimestamp(row["start"], tz=BRUNEI_TZ),
+            "state": row["state"],
+            "sum": row["sum"],
+        }
+        for row in legacy
+    ]
+    async_add_external_statistics(hass, new_metadata, statistics)
+    await get_instance(hass).async_block_till_done()
+
+    migrated = await get_sensor_statistics(hass, new_statistic_id)
+    if len(migrated) < len(legacy):
+        LOGGER.error(
+            "Migration of %s -> %s copied %d of %d rows; leaving the legacy "
+            "series in place. Backup at %s",
+            legacy_statistic_id,
+            new_statistic_id,
+            len(migrated),
+            len(legacy),
+            backup_file,
+        )
+        return
+
+    get_instance(hass).async_clear_statistics([legacy_statistic_id])
+    LOGGER.info(
+        "Migrated %d rows %s -> %s and cleared the legacy series",
+        len(migrated),
+        legacy_statistic_id,
+        new_statistic_id,
+    )
