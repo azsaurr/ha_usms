@@ -4,14 +4,20 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from homeassistant.components.recorder.statistics import async_import_statistics
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.components.recorder.statistics import async_add_external_statistics
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
 from homeassistant.core import callback
 
 from .const import LOGGER
 from .entity import HAUSMSEntity
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from homeassistant.components.recorder.models.statistics import StatisticMetaData
     from homeassistant.core import HomeAssistant
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -32,6 +38,9 @@ async def async_setup_entry(
     for meter_data in coordinator.data:
         entities.append(HAUSMSMeterSensor(coordinator, meter_data))
         entities.append(HAUSMSMeterDebtSensor(coordinator, meter_data))
+        entities.append(HAUSMSProjectedConsumptionSensor(coordinator, meter_data))
+        entities.append(HAUSMSProjectedCostSensor(coordinator, meter_data))
+        entities.append(HAUSMSCreditRunsOutSensor(coordinator, meter_data))
     async_add_entities(entities)
 
 
@@ -58,7 +67,7 @@ class HAUSMSMeterSensor(HAUSMSEntity, SensorEntity):
                 len(temp_meter_data.new_statistics),
                 self.meter_data.statistic_id,
             )
-            async_import_statistics(
+            async_add_external_statistics(
                 self.hass,
                 self.metadata,
                 temp_meter_data.new_statistics,
@@ -203,4 +212,130 @@ class HAUSMSMeterDebtSensor(HAUSMSEntity, SensorEntity):
             "debt_clearance_model": self.meter_data.debt_clearance_model,
             "has_debt": self.meter_data.has_debt,
             "topup_url": self.meter_data.topup_url,
+        }
+
+
+class HAUSMSProjectionSensor(HAUSMSEntity, SensorEntity):
+    """Base for the per-meter month-end projection sensors.
+
+    Projections come from the coordinator, which derives them from this meter's
+    own recorded daily history, so they are account-independent. The value is
+    None until enough history exists.
+    """
+
+    _name_suffix: str
+    _id_suffix: str
+
+    def __init__(
+        self,
+        coordinator: HAUSMSDataUpdateCoordinator,
+        meter_data: HAUSMSMeterData,
+    ) -> None:
+        """Initialize the projection sensor."""
+        super().__init__(coordinator)
+        self.meter_data = meter_data
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Update the projection sensor from the coordinator."""
+        self.meter_data = self.coordinator.get_meter_data_by_no(self.meter_data.no)
+        self.async_write_ha_state()
+
+    @property
+    def name(self) -> str:
+        """Return the name of the projection sensor."""
+        return f"{self.meter_data.name} {self._name_suffix}"
+
+    @property
+    def unique_id(self) -> str:
+        """Return unique id of the projection sensor."""
+        return f"{self.meter_data.unique_id}_{self._id_suffix}"
+
+
+class HAUSMSProjectedConsumptionSensor(HAUSMSProjectionSensor):
+    """Projected total consumption for the current calendar month."""
+
+    _name_suffix = "Projected Month Consumption"
+    _id_suffix = "projected_month_consumption"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    @property
+    def device_class(self) -> str | None:
+        """Match the meter's own device class."""
+        meter_type = self.meter_data.type.upper()
+        if "ELECTRIC" in meter_type or "ENERGY" in meter_type:
+            return SensorDeviceClass.ENERGY
+        if "WATER" in meter_type:
+            return SensorDeviceClass.WATER
+        return None
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the projected month-end consumption."""
+        return self.meter_data.projected_month_consumption
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Return the meter's consumption unit."""
+        return self.meter_data.unit
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return the projection's supporting figures."""
+        return {
+            "projected_daily_consumption": (
+                self.meter_data.projected_daily_consumption
+            ),
+            "this_month_consumption": self.meter_data.this_month_total_consumption,
+        }
+
+
+class HAUSMSProjectedCostSensor(HAUSMSProjectionSensor):
+    """Projected cost for the current calendar month, on the USMS tariff."""
+
+    _name_suffix = "Projected Month Cost"
+    _id_suffix = "projected_month_cost"
+    _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the projected month-end cost."""
+        return self.meter_data.projected_month_cost
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Return the currency the cost is denominated in."""
+        return self.meter_data.currency
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return the projection's supporting figures."""
+        return {"this_month_cost": self.meter_data.this_month_total_cost}
+
+
+class HAUSMSCreditRunsOutSensor(HAUSMSProjectionSensor):
+    """Estimated moment the meter's prepaid credit is exhausted.
+
+    Remaining units divided by the projected daily rate. Only meaningful for
+    prepaid meters that report remaining units.
+    """
+
+    _name_suffix = "Credit Runs Out"
+    _id_suffix = "credit_runs_out_at"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    @property
+    def native_value(self) -> datetime | None:
+        """Return when credit is projected to run out."""
+        return self.meter_data.credit_runs_out_at
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return the supporting figures."""
+        return {
+            "remaining_unit": self.meter_data.remaining_unit,
+            "projected_daily_consumption": (
+                self.meter_data.projected_daily_consumption
+            ),
         }

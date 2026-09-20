@@ -1,6 +1,6 @@
 """Test the statistics helpers."""
 
-from datetime import datetime
+from datetime import date, datetime
 
 import pytest
 from usms import BRUNEI_TZ
@@ -108,3 +108,42 @@ def test_get_missing_days_threshold(helpers, readings) -> None:
     partial = _recorder_rows([(_at(20, h), 1.0, 1.0) for h in range(readings)])
 
     assert _at(20).date() in [d.date() for d in helpers.get_missing_days(partial)]
+
+
+def test_daily_change_map_reads_change(helpers) -> None:
+    """Test that day-period rows collapse to a {date: consumption} map."""
+    start = datetime(2026, 9, 1, tzinfo=BRUNEI_TZ).timestamp()
+    rows = [
+        {"start": start, "change": 90.0},
+        {"start": start + 86400, "change": 100.0},
+        {"start": start + 2 * 86400, "change": None},
+    ]
+    out = helpers.daily_change_map(rows)
+    assert out[date(2026, 9, 1)] == 90.0
+    assert out[date(2026, 9, 2)] == 100.0
+    assert date(2026, 9, 3) not in out
+
+
+def test_project_month_total_blends_and_scales(helpers) -> None:
+    """Test a steady daily rate projects back to the expected month total."""
+    daily = {date(2026, 9, d): 100.0 for d in range(1, 10)}
+    now = datetime(2026, 9, 10, 12, 0, tzinfo=BRUNEI_TZ)
+    projected, rate = helpers.project_month_total(daily, now)
+    assert rate == 100.0
+    assert projected == 3000.0
+
+
+def test_project_month_total_needs_history(helpers) -> None:
+    """Test the projection is None without at least one complete prior day."""
+    now = datetime(2026, 9, 10, tzinfo=BRUNEI_TZ)
+    assert helpers.project_month_total({}, now) is None
+    assert helpers.project_month_total({date(2026, 9, 10): 40.0}, now) is None
+
+
+def test_project_month_total_early_month_uses_trailing(helpers) -> None:
+    """Test day-1 projection falls back to the trailing mean of prior days."""
+    daily = {date(2026, 8, d): 80.0 for d in range(1, 31)}
+    now = datetime(2026, 9, 1, tzinfo=BRUNEI_TZ)
+    projected, rate = helpers.project_month_total(daily, now)
+    assert rate == 80.0
+    assert projected == 80.0 * 30
