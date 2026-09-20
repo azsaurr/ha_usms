@@ -41,6 +41,37 @@ Use this button and enter the URL for your Home Assistant instance for easy inst
 - Copy and paste `custom_components/ha_usms` from this repo to `<home_assistant>/config/custom_components/ha_usms`
 - Reboot Home Assistant for changes to take effect
 
+## Long-term statistics
+
+Consumption history is published as **external statistics** under
+`ha_usms:<meter>` (for example `ha_usms:electricity_meter_55014488`), not under
+the meter sensor's own entity id. The meter sensor reports *remaining* prepaid
+units, which is a level and must not be summed, so keeping the cumulative
+consumption series on a separate external id is what stops Home Assistant's
+recorder raising a recurring "entity no longer has a state class" repair.
+
+On upgrade the integration migrates any existing `sensor.<meter>` statistics to
+the new external id automatically: it writes a JSON backup of the legacy rows to
+`config/ha_usms/statistics_backup/`, copies them, verifies the copy, and only
+then removes the old series. If you had added a meter to the **Energy dashboard**
+or a statistics graph, repoint it from `sensor.<meter>` to `ha_usms:<meter>`
+after upgrading (the meter's own sensor entity keeps its id and is unchanged).
+
+## Month-end projections
+
+Each meter gains three projection sensors, computed from that meter's own
+recorded daily history, so they are not tuned to any particular account:
+
+- **Projected Month Consumption** — month-to-date usage plus the remaining days
+  at a blended recent daily rate.
+- **Projected Month Cost** — that projected consumption priced on the USMS
+  residential tariff.
+- **Credit Runs Out** — a timestamp of when the remaining prepaid units are
+  projected to be exhausted at the current rate.
+
+Projections are empty until a meter has a little recorded history, and sharpen
+as the month fills in.
+
 ## Configuration
 
 After installation:
@@ -57,7 +88,7 @@ After installation:
 - [ ] Improve README
 - [x] Re-structure source code files
 - [x] Support for configuration via GUI
-- [ ] Go through Home Assistant's [development checklist](https://developers.home-assistant.io/docs/development_checklist)
+- [ ] Go through Home Assistant's [development checklist](https://developers.home-assistant.io/docs/development_checklist) (see `custom_components/ha_usms/quality_scale.yaml` for per-rule status)
 - [x] Publish package to HACS store
 - [x] Support for water meter
 

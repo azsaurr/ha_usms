@@ -1,0 +1,64 @@
+# Integration Quality Scale tracking for ha_usms.
+# https://developers.home-assistant.io/docs/core/integration-quality-scale/
+# status: done | todo | exempt (with a reason)
+rules:
+  # --- Bronze ---
+  config-flow: done
+  test-before-configure: done  # config_flow validates credentials before creating the entry
+  unique-config-entry: done  # one entry per USMS account (slugified username)
+  config-flow-test-coverage:
+    status: todo
+    comment: Needs pytest-homeassistant-custom-component; only pure helpers are tested today.
+  runtime-data: done
+  test-before-setup:
+    status: done
+    comment: >-
+      _async_setup calls account.initialize(); a swallowed login now raises
+      ConfigEntryAuthFailed from the first refresh instead of freezing values.
+  appropriate-polling: done  # hourly default, 10-minute floor
+  entity-unique-id: done
+  has-entity-name:
+    status: todo
+    comment: Entities set their own name rather than using has_entity_name + device.
+  entity-event-setup: exempt  # no event subscriptions
+  dependency-transparency: done  # usms is a pinned, published dependency
+  action-setup: exempt  # no custom services (buttons replaced the old services)
+  common-modules: done  # coordinator, entity, data modules present
+  docs-high-level-description: done
+  docs-installation-instructions: done
+  docs-removal-instructions: done
+  docs-actions: exempt  # no actions
+  brands:
+    status: todo
+    comment: Logo/icon not yet submitted to home-assistant/brands.
+  # --- Silver ---
+  log-when-unavailable:
+    status: done
+    comment: >-
+      Failures raise UpdateFailed/ConfigEntryAuthFailed once; the coordinator
+      then suppresses repeat logging until recovery.
+  entity-unavailable:
+    status: done
+    comment: Values go unavailable on failure instead of freezing at the last reading.
+  reauthentication-flow:
+    status: todo
+    comment: >-
+      A dropped session now raises ConfigEntryAuthFailed (reauth is triggered),
+      but a dedicated async_step_reauth form is not yet implemented.
+  action-exceptions: exempt  # no actions
+  parallel-updates: done  # single coordinator poll
+  integration-owner: done  # @azsaurr
+  docs-configuration-parameters: done
+  docs-installation-parameters: done
+  test-coverage:
+    status: todo
+    comment: Pure statistics/projection maths covered; entity/coordinator setup not yet.
+  # --- Gold / Platinum: not yet targeted ---
+  inject-websession:
+    status: done
+    comment: >-
+      Uses a dedicated create_async_httpx_client, not HA's shared client, so the
+      usms library's cookie/redirect mutation cannot leak to other integrations.
+  strict-typing:
+    status: todo
+    comment: mypy --strict not yet clean across the package.
