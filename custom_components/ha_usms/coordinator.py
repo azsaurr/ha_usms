@@ -21,7 +21,6 @@ from .helpers import (
     get_sensor_statistics,
     map_to_statistics,
     migrate_legacy_statistics,
-    project_month_total,
     statistics_diff,
     statistics_to_map,
 )
@@ -259,40 +258,25 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
     async def _apply_projection(self, meter_data: HAUSMSMeterData) -> None:
         """Fill in this month's consumption/cost/credit projection for a meter.
 
-        Uses only this meter's own recorded daily history, so it is not tied to
-        any particular account. Silently leaves the projection as None when
-        there is not yet enough history.
+        The maths, the tariff pricing and the credit runway all live in the usms
+        library; Home Assistant only supplies the daily history, which comes from
+        the recorder rather than from refetching USMS.
         """
+        meter = next((m for m in self.account.meters if m.no == meter_data.no), None)
+        if meter is None:
+            return
+
         daily = daily_change_map(
             await get_daily_statistics(self.hass, meter_data.statistic_id)
         )
-        now = datetime.now().astimezone()
-        result = project_month_total(daily, now)
-        if result is None:
+        projection = meter.project_month(daily, datetime.now().astimezone())
+        if projection is None:
             return
 
-        projected_total, daily_rate = result
-        meter_data.projected_month_consumption = round(projected_total, 3)
-        meter_data.projected_daily_consumption = round(daily_rate, 3)
-
-        # Cost via the meter's own tiered tariff (residential USMS rates, shared
-        # across all accounts; the library warns for non-residential meters).
-        meter = next((m for m in self.account.meters if m.no == meter_data.no), None)
-        if meter is not None:
-            month_consumptions = {
-                # calculate_total_cost only needs the summed consumption, so a
-                # single synthetic point carrying the projected total is enough.
-                now: projected_total,
-            }
-            meter_data.projected_month_cost = round(
-                meter.calculate_total_cost(month_consumptions), 2
-            )
-
-        # Credit runway: remaining prepaid units divided by the projected rate.
-        remaining = getattr(meter_data, "remaining_unit", None)
-        if remaining is not None and daily_rate > 0:
-            days_left = remaining / daily_rate
-            meter_data.credit_runs_out_at = now + timedelta(days=days_left)
+        meter_data.projected_month_consumption = projection.total_consumption
+        meter_data.projected_daily_consumption = projection.daily_rate
+        meter_data.projected_month_cost = projection.total_cost
+        meter_data.credit_runs_out_at = projection.credit_runs_out_at
 
     def get_meter_data_by_no(self, meter_no: str) -> HAUSMSMeterData | None:
         """Return meter data by meter no."""

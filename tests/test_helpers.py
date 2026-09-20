@@ -122,28 +122,3 @@ def test_daily_change_map_reads_change(helpers) -> None:
     assert out[date(2026, 9, 1)] == 90.0
     assert out[date(2026, 9, 2)] == 100.0
     assert date(2026, 9, 3) not in out
-
-
-def test_project_month_total_blends_and_scales(helpers) -> None:
-    """Test a steady daily rate projects back to the expected month total."""
-    daily = {date(2026, 9, d): 100.0 for d in range(1, 10)}
-    now = datetime(2026, 9, 10, 12, 0, tzinfo=BRUNEI_TZ)
-    projected, rate = helpers.project_month_total(daily, now)
-    assert rate == 100.0
-    assert projected == 3000.0
-
-
-def test_project_month_total_needs_history(helpers) -> None:
-    """Test the projection is None without at least one complete prior day."""
-    now = datetime(2026, 9, 10, tzinfo=BRUNEI_TZ)
-    assert helpers.project_month_total({}, now) is None
-    assert helpers.project_month_total({date(2026, 9, 10): 40.0}, now) is None
-
-
-def test_project_month_total_early_month_uses_trailing(helpers) -> None:
-    """Test day-1 projection falls back to the trailing mean of prior days."""
-    daily = {date(2026, 8, d): 80.0 for d in range(1, 31)}
-    now = datetime(2026, 9, 1, tzinfo=BRUNEI_TZ)
-    projected, rate = helpers.project_month_total(daily, now)
-    assert rate == 80.0
-    assert projected == 80.0 * 30
