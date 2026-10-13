@@ -1,3 +1,9 @@
+## v1.4.1 (2026-10-13)
+
+### Fix
+
+- **deps**: require usms 1.3.1 so date-only updates still refresh credit hourly
+
 ## v1.4.0 (2026-10-13)
 
 ### Feat
