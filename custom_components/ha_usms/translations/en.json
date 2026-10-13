@@ -23,6 +23,7 @@
         },
         "error": {
             "auth": "Username/Password is wrong.",
+            "captcha": "USMS accepted the login but its captcha could not be solved. Please try again.",
             "connection": "Unable to connect to the server.",
             "unknown": "Unknown error occurred."
         },

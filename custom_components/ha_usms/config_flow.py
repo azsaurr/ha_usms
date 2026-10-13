@@ -9,7 +9,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 from slugify import slugify
 from usms import AsyncUSMSAccount
-from usms.exceptions.errors import USMSLoginError
+from usms.exceptions.errors import USMSCaptchaError, USMSLoginError
 
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, LOGGER, MIN_SCAN_INTERVAL
 
@@ -34,6 +34,9 @@ class HAUSMSFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             except USMSLoginError as exception:
                 LOGGER.exception(exception)
                 _errors["base"] = "auth"
+            except USMSCaptchaError as exception:
+                LOGGER.warning(exception)
+                _errors["base"] = "captcha"
             else:
                 await self.async_set_unique_id(
                     ## Do NOT use this in production code
@@ -88,6 +91,9 @@ class HAUSMSFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             except USMSLoginError as exception:
                 LOGGER.exception(exception)
                 _errors["base"] = "auth"
+            except USMSCaptchaError as exception:
+                LOGGER.warning(exception)
+                _errors["base"] = "captcha"
             else:
                 await self.async_set_unique_id(
                     unique_id=slugify(user_input[CONF_USERNAME], separator="_")

@@ -129,11 +129,14 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
                 if not has_updates:
                     # refresh_data() returns False both for "nothing new" and for
                     # a login failure the library swallowed. Disambiguate so a
-                    # broken session raises reauth instead of silently freezing
+                    # broken session is reported instead of silently freezing
                     # every value (which is how a 4-day outage went unnoticed).
+                    # Logging in again surfaces the real reason: USMSLoginError
+                    # (wrong password) becomes reauth below, while
+                    # USMSCaptchaError - credentials fine, captcha unsolved - is
+                    # only an UpdateFailed and is retried on the next poll.
                     if not await self.account.is_authenticated():
-                        msg = "USMS session is no longer authenticated"
-                        raise ConfigEntryAuthFailed(msg)  # noqa: TRY301
+                        await self.account.session.authenticate()
                     LOGGER.debug(
                         "USMS account %s has no new updates", self.account.reg_no
                     )
