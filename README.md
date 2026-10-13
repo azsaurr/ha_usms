@@ -83,6 +83,22 @@ After installation:
 - Enter your username and password
 - Submit
 
+## USMS login captcha (October 2026)
+
+USMS added an image captcha to its login in October 2026, which broke every
+version of this integration up to 1.2.2: Home Assistant logged `USMSLoginError:
+Invalid login.` and retried forever, even though the password was correct.
+
+From 1.3.0 the integration needs no extra setup for this. The underlying
+[usms](https://github.com/azsaurr/usms) library (1.2.0 and later) solves the captcha
+itself with a small bundled model that runs on numpy alone, so nothing else -
+no add-on and no external service - has to be installed. See the library's
+README for how it works.
+
+If USMS rejects every captcha answer in a row, the update is simply retried at
+the next poll. Home Assistant only asks you to re-enter your credentials when
+USMS actually rejects the password.
+
 ## To-Do
 
 - [ ] Improve README
@@ -106,3 +122,4 @@ This project was made possible with help from…
 - [homeassistant-statistics](https://github.com/klausj1/homeassistant-statistics), which provided useful reference for importing statistics
 - [USMS Portal](https://www.usms.com.bn/smartmeter/about.html) for providing access to smart meter data
 - [usms](https://github.com/azsaurr/usms), wrapper for interacting with the USMS portal
+- [ddddocr](https://github.com/sml2h3/ddddocr) by sml2h3 (MIT), whose OCR model the usms library's captcha solver is derived from
