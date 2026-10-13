@@ -83,6 +83,30 @@ After installation:
 - Enter your username and password
 - Submit
 
+## Cost in the Energy dashboard
+
+Each meter also publishes a cost statistic in B$, alongside its consumption
+statistic: `ha_usms:electricity_meter_<number>_cost` and
+`ha_usms:water_meter_<number>_cost`. Point the Energy dashboard at it under
+*Settings → Dashboards → Energy*: edit the grid consumption (or water) source,
+choose *Use an entity tracking the total costs*, and pick the meter's `Cost`
+statistic. A fixed price would be wrong for USMS, whose tariff is tiered.
+
+It records what each hour actually cost, not a tariff estimate. USMS is prepaid:
+a top-up buys units priced on the tiers, counted over that calendar month's
+purchases, and the meter uses units oldest first. Units left over from last
+month's dearer top-ups are therefore still charged at their price into the new
+month, and the cheaper tier only starts once they run out. The integration takes
+each hour's cost from the meter's own credit balance, recorded every update, so
+it follows all of this exactly.
+
+Hours with no credit reading to go by - history from before the credit was
+recorded, and the latest hour or two until the next reading - are priced from the
+tariff on the calendar month's consumption instead, and the latest hours are
+corrected once their reading arrives. When the integration was unable to update
+for a while, the credit lost over the gap is spread across its hours by
+consumption.
+
 ## USMS login captcha (October 2026)
 
 USMS added an image captcha to its login in October 2026, which broke every
