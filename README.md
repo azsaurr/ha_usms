@@ -10,9 +10,9 @@ Getting started is as easy as providing your login information (username and pas
 - `Last refresh` - timestamp of last refresh attempt by the integration
 - `Currency` - currency in BND (Brunei Dollars)
 - `Last month consumption` - the total consumption of this meter last month
-- `Last month cost` - the cost for the total consumption of this meter last month
+- `Last month cost` - what this meter's consumption actually cost last month (from the cost statistic below)
 - `This month consumption` - the total consumption of this meter this month
-- `This month cost` - the cost for the total consumption of this meter this month
+- `This month cost` - what this meter's consumption has actually cost so far this month
 
 Each meter also has two associated buttons. The `Download and Import History` button will fetch all data and import them as long-term statistics, allowing the meter to be imported into Home Assistant's Energy dashboard. The `Recalculate Statistics` button is mostly for fixing broken statistics, if any.
 

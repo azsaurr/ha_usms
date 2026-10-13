@@ -19,6 +19,7 @@ from .helpers import (
     daily_change_map,
     get_daily_statistics,
     get_missing_days,
+    get_month_costs,
     get_sensor_statistics,
     map_to_statistics,
     migrate_legacy_statistics,
@@ -224,6 +225,19 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
                     meter_data.this_month_total_cost = (
                         prev_meter_data.this_month_total_cost
                     )
+
+                # Show what the months actually cost, from the cost statistic, in
+                # place of the tariff estimate on consumption: USMS is prepaid and
+                # spends older (often dearer) units first, so the two differ most
+                # at the start of a month. Kept as the estimate until the cost
+                # statistic has rows for that month.
+                last_cost, this_cost = await get_month_costs(
+                    self.hass, meter_data.cost_statistic_id, now
+                )
+                if last_cost is not None:
+                    meter_data.last_month_total_cost = last_cost
+                if this_cost is not None:
+                    meter_data.this_month_total_cost = this_cost
 
                 meter_data.new_statistics = []
                 # only check if not on first run, and there has been any updates

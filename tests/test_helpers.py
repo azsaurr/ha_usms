@@ -331,3 +331,32 @@ def test_charged_cost_fills_daily_rows_from_hourly_readings(helpers) -> None:
 
     assert costs[0]["state"] == pytest.approx(0.24)  # 24 hourly drops of B$0.01
     assert costs[1]["state"] == pytest.approx(2.0 * 0.11)  # no readings: estimate
+
+
+def test_month_cost_totals_sums_brunei_calendar_months(helpers) -> None:
+    """Test that rows are totalled into last and this month, by Brunei time."""
+    rows = _recorder_rows(
+        [
+            (datetime(2026, 9, 1, 0, tzinfo=BRUNEI_TZ), 1.25, 0.0),
+            (datetime(2026, 9, 30, 23, tzinfo=BRUNEI_TZ), 0.75, 0.0),
+            (datetime(2026, 10, 1, 0, tzinfo=BRUNEI_TZ), 0.5, 0.0),
+            (datetime(2026, 8, 31, 23, tzinfo=BRUNEI_TZ), 9.0, 0.0),  # two months ago
+        ]
+    )
+
+    last, this = helpers.month_cost_totals(
+        rows, datetime(2026, 10, 13, tzinfo=BRUNEI_TZ)
+    )
+
+    assert (last, this) == (2.0, 0.5)
+
+
+def test_month_cost_totals_is_none_for_a_month_without_rows(helpers) -> None:
+    """Test that "no rows" is None, distinct from a month that cost nothing."""
+    rows = _recorder_rows([(datetime(2026, 10, 1, tzinfo=BRUNEI_TZ), 0.0, 0.0)])
+
+    last, this = helpers.month_cost_totals(
+        rows, datetime(2026, 10, 13, tzinfo=BRUNEI_TZ)
+    )
+
+    assert (last, this) == (None, 0.0)

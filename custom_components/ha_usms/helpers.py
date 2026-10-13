@@ -381,6 +381,56 @@ def daily_change_map(statistics: list) -> dict[date_type, float]:
     return daily
 
 
+def month_cost_totals(
+    cost_statistics_rows: list, now: datetime
+) -> tuple[float | None, float | None]:
+    """
+    Return last month's and this month's total cost from cost statistic rows.
+
+    Months are Brunei calendar months. A month with no rows gives None rather than
+    0.0, so callers can tell "nothing recorded" from "cost nothing".
+    """
+    this_month = now.astimezone(BRUNEI_TZ).replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0
+    )
+    last_month = (this_month - timedelta(days=1)).replace(day=1)
+
+    totals: dict[datetime, float] = {}
+    for row in cost_statistics_rows:
+        start = datetime.fromtimestamp(row["start"], tz=BRUNEI_TZ)
+        month = start.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if month in (last_month, this_month):
+            totals[month] = totals.get(month, 0.0) + (row.get("state") or 0.0)
+
+    def rounded(month: datetime) -> float | None:
+        return round(totals[month], 2) if month in totals else None
+
+    return rounded(last_month), rounded(this_month)
+
+
+async def get_month_costs(
+    hass: HomeAssistant, statistic_id: str, now: datetime
+) -> tuple[float | None, float | None]:
+    """Return last and this month's total cost, read from the recorder."""
+    since = (
+        now.astimezone(BRUNEI_TZ).replace(
+            day=1, hour=0, minute=0, second=0, microsecond=0
+        )
+        - timedelta(days=1)
+    ).replace(day=1)
+    statistics = await get_instance(hass).async_add_executor_job(
+        statistics_during_period,
+        hass,
+        since,
+        None,
+        {statistic_id},
+        "hour",
+        None,
+        {"state"},
+    )
+    return month_cost_totals(statistics.get(statistic_id, []), now)
+
+
 async def get_daily_statistics(
     hass: HomeAssistant,
     statistic_id: str,
