@@ -1,3 +1,9 @@
+## v1.4.0 (2026-10-13)
+
+### Feat
+
+- **statistics**: publish what each hour actually cost, from the meter's credit
+
 ## v1.3.0 (2026-10-13)
 
 ### Fix
