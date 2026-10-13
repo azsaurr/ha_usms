@@ -12,6 +12,7 @@ from slugify import slugify
 from .const import LOGGER
 from .entity import HAUSMSEntity
 from .helpers import (
+    async_sync_cost_statistics,
     get_missing_days,
     get_sensor_statistics,
     map_to_statistics,
@@ -76,13 +77,14 @@ class HAUSMSMeterButton(HAUSMSEntity, ButtonEntity):
         return await get_sensor_statistics(self.hass, self.meter_data.statistic_id)
 
     async def _import_statistics(self, statistics: list) -> None:
-        """Write the given statistics into the recorder."""
+        """Write the given statistics into the recorder, then reprice them."""
         await self.hass.async_add_executor_job(
             async_add_external_statistics,
             self.hass,
             self.meter_data.metadata,
             statistics,
         )
+        await async_sync_cost_statistics(self.hass, self.meter_data)
 
 
 class HAUSMSMeterDownloadStatisticsButton(HAUSMSMeterButton):

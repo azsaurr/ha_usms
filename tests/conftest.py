@@ -1,6 +1,6 @@
 """Test fixtures for HA-USMS.
 
-`helpers.py` pulls in three Home Assistant symbols, none of which the pure
+`helpers.py` pulls in a few Home Assistant symbols, none of which the pure
 statistics functions actually use. Stubbing them keeps these tests runnable
 without installing Home Assistant, so the statistics maths can be covered
 cheaply. Integration-level tests still want
@@ -24,12 +24,21 @@ def _stub_homeassistant() -> None:
         "homeassistant",
         "homeassistant.components",
         "homeassistant.components.recorder",
+        "homeassistant.components.recorder.history",
         "homeassistant.components.recorder.statistics",
         "homeassistant.core",
         "homeassistant.helpers",
+        "homeassistant.helpers.entity_registry",
         "homeassistant.helpers.recorder",
     ):
         sys.modules.setdefault(name, types.ModuleType(name))
+
+    sys.modules[
+        "homeassistant.components.recorder.history"
+    ].get_significant_states = None
+    sys.modules["homeassistant.helpers"].entity_registry = sys.modules[
+        "homeassistant.helpers.entity_registry"
+    ]
 
     stats = sys.modules["homeassistant.components.recorder.statistics"]
     stats.statistics_during_period = None

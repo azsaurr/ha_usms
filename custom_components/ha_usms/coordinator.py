@@ -15,6 +15,7 @@ from usms import AsyncUSMSAccount, AsyncUSMSClient, USMSLoginError
 from .const import DEFAULT_SCAN_INTERVAL, LOGGER
 from .data import HAUSMSMeterData
 from .helpers import (
+    async_sync_cost_statistics,
     daily_change_map,
     get_daily_statistics,
     get_missing_days,
@@ -95,7 +96,13 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
     async def _async_migrate_statistics(self) -> None:
-        """Migrate every meter's legacy statistics, one meter at a time."""
+        """
+        Migrate every meter's legacy statistics, then bring its cost series up to date.
+
+        The cost sync runs here, after the migration, because it reads the external
+        consumption series the migration produces. On the first run it builds the
+        whole cost history; after that it finds nothing to write.
+        """
         for meter in self.account.meters:
             meter_data = HAUSMSMeterData.from_meter(meter)
             try:
@@ -111,6 +118,10 @@ class HAUSMSDataUpdateCoordinator(DataUpdateCoordinator):
                     "unchanged and will be retried on the next restart",
                     meter_data.name,
                 )
+            try:
+                await async_sync_cost_statistics(self.hass, meter_data)
+            except Exception:  # noqa: BLE001 - cost is derived data; never fatal
+                LOGGER.exception("Cost statistics sync failed for %s", meter_data.name)
 
     async def _async_update_data(self) -> Any:  # noqa: PLR0912, PLR0915
         """Update data via library."""

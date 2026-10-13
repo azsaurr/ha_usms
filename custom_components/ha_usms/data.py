@@ -86,6 +86,25 @@ class HAUSMSMeterData(AsyncUSMSMeter):
         return f"{EXTERNAL_STATISTIC_SOURCE}:{self.unique_id}"
 
     @property
+    def cost_statistic_id(self) -> str:
+        """Return the external statistic_id for this meter's cost, in B$."""
+        return f"{self.statistic_id}_cost"
+
+    @property
+    def cost_metadata(self) -> StatisticMetaData:
+        """Return a StatisticMetaData for this meter's cost statistic."""
+        return {
+            "mean_type": StatisticMeanType.NONE,
+            "has_sum": True,
+            "name": f"{self.name} Cost",
+            "source": EXTERNAL_STATISTIC_SOURCE,
+            "statistic_id": self.cost_statistic_id,
+            # Money has no unit converter in Home Assistant.
+            "unit_class": None,
+            "unit_of_measurement": self.currency,
+        }
+
+    @property
     def metadata(self) -> StatisticMetaData:
         """Return a StatisticMetaData for the sensor associated with this meter."""
         return {

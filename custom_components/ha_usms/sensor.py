@@ -10,6 +10,7 @@ from homeassistant.core import callback
 
 from .const import LOGGER
 from .entity import HAUSMSEntity
+from .helpers import async_sync_cost_statistics
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -67,6 +68,12 @@ class HAUSMSMeterSensor(HAUSMSEntity, SensorEntity):
                 self.hass,
                 self.metadata,
                 temp_meter_data.new_statistics,
+            )
+            # New consumption shifts the month's running total, so reprice it.
+            self.coordinator.config_entry.async_create_background_task(
+                self.hass,
+                async_sync_cost_statistics(self.hass, temp_meter_data),
+                name=f"ha_usms_cost_sync_{temp_meter_data.unique_id}",
             )
 
         if self.meter_data.last_refresh != temp_meter_data.last_refresh:
