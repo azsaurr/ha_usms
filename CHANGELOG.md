@@ -1,3 +1,9 @@
+## v1.3.0 (2026-10-13)
+
+### Fix
+
+- **coordinator**: retry an unsolved login captcha instead of asking for reauth
+
 ## v1.2.2 (2026-09-20)
 
 ### Fix
